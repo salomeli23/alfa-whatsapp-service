@@ -62,8 +62,11 @@ async def bot_preview(payload: dict):
     message = payload.get("message", "")
     reset = payload.get("reset", False)
     contact = payload.get("contact", "preview-user")
+    name = payload.get("name")
     if reset or contact not in sessions:
         sessions[contact] = {}
+    if name and not sessions[contact].get("name"):
+        sessions[contact]["name"] = name
     messages = build_reply(message, sessions[contact])
     return {"messages": messages}
 
@@ -72,11 +75,15 @@ async def bot_preview(payload: dict):
 async def whatsapp_webhook(
     Body: str = Form(default=""),
     From: str = Form(default=""),
+    ProfileName: str = Form(default=""),
 ):
     """Webhook que Twilio invoca al recibir un mensaje de WhatsApp."""
-    logger.info("WhatsApp entrante de %s: %s", From, Body)
+    logger.info("WhatsApp entrante de %s (%s): %s", From, ProfileName, Body)
 
     session = sessions.setdefault(From, {})
+    # Nombre automático desde el perfil de WhatsApp (nunca se pregunta)
+    if ProfileName and not session.get("name"):
+        session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
     messages = build_reply(Body, session)
 
     twiml = MessagingResponse()

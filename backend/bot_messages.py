@@ -12,16 +12,17 @@ WELCOME_MESSAGE = (
     "📌 Responde con el número de la opción."
 )
 
-# Se muestra en cualquier parte de la conversación
 BACK_HINT = "\n\n↩️ Escribe *volver* en cualquier momento para regresar al menú principal."
+
+AGENDAR = (
+    "\n\n📅 ¿Agendamos tu cita? Cuéntame qué *día y hora* te quedan mejor y uno de "
+    "nuestros asesores confirmará tu cupo. 😊"
+)
 
 INVALID_PREFIX = (
     "No entendí tu mensaje 🤔. Con gusto te ayudo, elige una de nuestras opciones 👇\n\n"
 )
 
-ASK_NAME = "Antes de darte la información, ¿me regalas tu *nombre*? 🙂"
-
-# Pregunta de continuación para servicios vehiculares (opciones 1, 2, 3 y 5)
 VEHICLE_PROMPT = (
     "🚙 Para continuar con tu cotización:\n"
     "Por favor indícame la marca y modelo de tu vehículo.\n"
@@ -35,8 +36,7 @@ def vehicle_ack(name: str, model: str) -> str:
     saludo = f"¡Gracias, {name}! 🙌" if name else "¡Gracias! 🙌"
     return (
         f"{saludo} Registré tu vehículo: *{model}*.\n"
-        "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
-        "Si deseas atención inmediata escribe *ASESOR*."
+        "Un asesor de Alfa Polarizados preparará tu *cotización personalizada*."
     )
 
 
@@ -74,6 +74,111 @@ VIDEOS_OPT1 = [
     {"title": "👀 Visibilidad", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154083/visibilidad_il08yd.mp4"},
 ]
 
+OPT1_CHOICE_PROMPT = (
+    "😍 ¿Cuál de los *3 planes* te gustó más?\n"
+    "1️⃣ Cerámico\n"
+    "2️⃣ High Control\n"
+    "3️⃣ IRR\n"
+    "Responde con el número o el nombre del plan."
+)
+
+OPT1_PLAN_NAMES = {"1": "Plan Cerámico", "2": "Plan High Control", "3": "Plan IRR"}
+
+
+# ---- Opción 2: PPF ----
+PPF_PROTECT_MENU = (
+    "Ahora indícame qué deseas proteger:\n"
+    "1️⃣ Protección Total\n"
+    "2️⃣ Pintura Completa\n"
+    "3️⃣ Piano Black\n"
+    "4️⃣ Partes Acrílicas\n"
+    "Responde con el número o el nombre del servicio."
+)
+
+PPF_TOTAL = (
+    "✨ Full PPF – Protección Total\n"
+    "Este servicio protege completamente tu vehículo:\n"
+    "🚗 Pintura\n"
+    "🖤 Piano Black\n"
+    "💡 Partes Acrílicas\n"
+    "✅ Película PPF Premium.\n"
+    "✅ Corte de precisión en plotter.\n"
+    "✅ Garantía de 10 años.\n"
+    "✅ Instalación profesional.\n"
+    "Uno de nuestros asesores continuará la conversación para enviarte la cotización exacta según tu vehículo. 😊"
+)
+
+PPF_PINTURA = (
+    "✨ Full PPF – Protección Total ✨\n"
+    "🚗 Cobertura completa: pintura, partes acrílicas y detalles en piano black.\n"
+    "✂️ Cortes de precisión en plotter.\n"
+    "🛡️ Película PPF Premium.\n"
+    "✅ Garantía de 10 años.\n"
+    "💰 Inversión total: $10.000.000 COP\n"
+    "¿Te reservo tu cupo para asegurar precio y disponibilidad?"
+)
+
+PPF_ACRILICAS = (
+    "💡 *PPF – Partes Acrílicas*\n"
+    "Protegemos las partes acrílicas de tu vehículo (molduras, apliques y detalles) con:\n"
+    "✅ Película PPF Premium.\n"
+    "✅ Corte de precisión en plotter.\n"
+    "✅ Garantía de 10 años.\n"
+    "Un asesor te enviará la cotización exacta según tu vehículo. 😊"
+)
+
+# Catálogo Piano Black (10 modelos)
+PB_MODELS = {
+    "mazda cx-30": {"nombre": "Mazda CX-30", "precio": "$900.000 COP", "piezas": 17,
+        "detalle": "1. Triángulos puertas delanteras — 2\n2. Parales de las puertas — 4\n3. LS de las puertas — 2\n4. LS del spoiler — 2\n5. Spoiler — 1\n6. Pantalla — 1\n7. Consola central — 1\n8. Módulos elevavidrios — 4",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785512481/WhatsApp_Image_2026-07-14_at_12.26.06_PM_za2dys.jpg"},
+    "mazda cx-5": {"nombre": "Mazda CX-5", "precio": "$800.000 COP", "piezas": 14,
+        "detalle": "1. Triángulos puertas delanteras — 2\n2. Parales de las puertas — 6\n3. Pantalla — 1\n4. Consola central — 1\n5. Módulos elevavidrios — 4",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/mazdacx5_s7mbkc.jpg"},
+    "mazda 3": {"nombre": "Mazda 3", "precio": "$400.000 COP", "piezas": 10,
+        "detalle": "1. Triángulos puertas delanteras — 2\n2. Parales de las puertas — 2\n3. Pantalla — 1\n4. Consola central — 1\n5. Módulos elevavidrios — 4",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/mazda3_wm6ioy.jpg"},
+    "tesla model 3": {"nombre": "Tesla Model 3", "precio": "$850.000 COP", "piezas": None,
+        "detalle": "1. Farolas\n2. Triángulos de espejos\n3. Espejos\n4. Parales laterales\n5. Tapa del cargador\n6. Pantallas — 2",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/teslamodel3_mlce70.jpg"},
+    "tesla model y": {"nombre": "Tesla Model Y", "precio": "$850.000 COP", "piezas": None,
+        "detalle": "1. Farolas\n2. Triángulos de espejos\n3. Espejos\n4. Parales laterales\n5. Tapa del cargador\n6. Pantallas — 2",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/teslamodely_lugjft.jpg"},
+    "ford territory": {"nombre": "Ford Territory", "precio": "$1.100.000 COP", "piezas": 16,
+        "detalle": "1. Piano black inferior farolas — 2\n2. Espejos — 2\n3. Parales de las puertas — 8\n4. LS del tapabaúl — 2\n5. Pantalla — 1\n6. Consola central — 1",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/fordterritory_vjoyml.jpg"},
+    "deepal s05": {"nombre": "Deepal S05", "precio": "$800.000 COP", "piezas": 9,
+        "detalle": "1. Triángulo puertas delanteras — 2\n2. Espejos — 2\n3. Parales de las puertas — 2\n4. LS del spoiler — 2\n5. Pantalla — 1",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513544/deepals05_otu2r2.jpg"},
+    "deepal s07": {"nombre": "Deepal S07", "precio": "$1.000.000 COP", "piezas": 11,
+        "detalle": "1. Triángulo puertas delanteras — 2\n2. Espejos — 2\n3. Parales de las puertas — 2\n4. Ventana lateral trasera — 2\n5. LS del spoiler — 2\n6. Pantalla — 1",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/deepals07_cszjav.jpg"},
+    "byd yuan up": {"nombre": "BYD Yuan UP", "precio": "$900.000 COP", "piezas": 14,
+        "detalle": "1. Parales panorámico — 2\n2. Espejos — 2\n3. Parales de las puertas — 4\n4. LS de las puertas — 2\n5. LS del spoiler — 2\n6. Pantallas — 2",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513544/bydyuanup_p7wh5w.jpg"},
+    "byd yuan plus": {"nombre": "BYD Yuan Plus", "precio": "$1.300.000 COP", "piezas": 23,
+        "detalle": "1. Triángulos de los espejos — 2\n2. Espejos — 2\n3. Parales de las puertas — 4\n4. LS de las puertas — 2\n5. LS spoiler — 2\n6. Pantallas — 2\n7. Consola central — 1\n8. Módulos elevavidrios — 4\n9. Parales internos en piano black de puertas — 4",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513544/bydyuanplus_z1fi14.jpg"},
+}
+
+
+def _collapse(s: str) -> str:
+    return "".join(ch for ch in s.lower() if ch.isalnum())
+
+
+def find_pb_model(vehicle_text: str):
+    if not vehicle_text:
+        return None
+    n = vehicle_text.lower().strip()
+    nc = _collapse(vehicle_text)
+    for key, data in PB_MODELS.items():
+        if key in n or n in key:
+            return data
+        kc = _collapse(key)
+        if kc in nc or nc in kc:
+            return data
+    return None
+
 
 # ---- Opción 4: flujo arquitectónico ----
 ARCH_CITY = (
@@ -85,12 +190,7 @@ ARCH_LOCATION = (
     "Ahora cuéntame:\n"
     "🏢 ¿Dónde se realizará la instalación?\n"
     "Por ejemplo:\n"
-    "- Casa\n"
-    "- Apartamento\n"
-    "- Oficina\n"
-    "- Local comercial\n"
-    "- Edificio\n"
-    "- Otro"
+    "- Casa\n- Apartamento\n- Oficina\n- Local comercial\n- Edificio\n- Otro"
 )
 
 ARCH_MEASURES = (
@@ -109,8 +209,7 @@ def arch_ack(name: str, city: str, location: str, measures: str) -> str:
         f"📍 Ciudad: *{city}*\n"
         f"🏢 Lugar: *{location}*\n"
         f"📏 Medidas: *{measures}*\n\n"
-        "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
-        "Si deseas atención inmediata escribe *ASESOR*."
+        "Un asesor de Alfa Polarizados preparará tu *cotización personalizada*."
     )
 
 
@@ -144,8 +243,7 @@ SERVICES = {
         "✅ Protección contra piedras, insectos, arañazos y químicos 🪨\n"
         "✅ Conserva el brillo de fábrica y el valor de reventa ✨\n"
         "✅ Acabado brillante o mate, invisible al ojo 👌\n"
-        "✅ Ideal para Piano Black y superficies acrílicas 🔲\n\n"
-        "💵 Desde *$900.000 COP* (según piezas y cobertura: parcial o total)."
+        "✅ Ideal para Piano Black y superficies acrílicas 🔲"
     ),
     "3": (
         "🚨 *Película Antiatraco (Película de Seguridad)*\n\n"
@@ -185,14 +283,14 @@ def _msg(text: str, media=None):
 
 
 def _deliver_service(session: dict, sid: str):
-    """Entrega la información de un servicio e inicia su flujo de seguimiento."""
     session["service"] = sid
+    name = session.get("name")
+    saludo = f"¡Perfecto, {name}! 🙌\n\n" if name else ""
     if sid in VEHICLE_SERVICES:
         session["step"] = "vehicle"
-        return [_msg(SERVICES[sid] + "\n\n" + VEHICLE_PROMPT + BACK_HINT)]
-    # Opción 4 (arquitectónico)
+        return [_msg(saludo + SERVICES[sid] + "\n\n" + VEHICLE_PROMPT + BACK_HINT)]
     session["step"] = "arch_city"
-    return [_msg(SERVICES[sid] + "\n\n" + ARCH_CITY + BACK_HINT)]
+    return [_msg(saludo + SERVICES[sid] + "\n\n" + ARCH_CITY + BACK_HINT)]
 
 
 def _option1_plans(session: dict, model: str):
@@ -209,13 +307,34 @@ def _option1_plans(session: dict, model: str):
     msgs.append(_msg("🎥 Mira nuestros resultados en video:"))
     for v in VIDEOS_OPT1:
         msgs.append(_msg(f"▶️ {v['title']}", media=[v["url"]]))
-    msgs.append(
-        _msg(
-            "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
-            "Si deseas atención inmediata escribe *ASESOR*." + BACK_HINT
-        )
-    )
+    session["step"] = "opt1_choice"
+    msgs.append(_msg(OPT1_CHOICE_PROMPT + BACK_HINT))
     return msgs
+
+
+def _piano_black(session: dict):
+    """Respuesta Piano Black detectando el modelo del vehículo indicado."""
+    vehicle = session.get("vehicle", "")
+    data = find_pb_model(vehicle)
+    if data:
+        piezas = f"\n🔩 Piezas: {data['piezas']}" if data.get("piezas") else ""
+        text = (
+            f"🖤 *Piano Black – {data['nombre']}*\n\n"
+            f"💵 Precio: *{data['precio']}*{piezas}\n\n"
+            f"*Piezas a cubrir:*\n{data['detalle']}\n\n"
+            "✅ Película PPF Premium · ✅ Corte de precisión en plotter · ✅ Garantía de 10 años."
+            + AGENDAR
+        )
+        return [_msg(text, media=[data["img"]])]
+    # Modelo no encontrado en el catálogo
+    disponibles = ", ".join(d["nombre"] for d in PB_MODELS.values())
+    text = (
+        f"🖤 *Piano Black*\n"
+        f"Aún no tengo el detalle exacto para *{vehicle}* en mi catálogo. "
+        "Un asesor te preparará la cotización personalizada según tu vehículo. 😊\n\n"
+        f"Modelos con detalle disponible: {disponibles}." + AGENDAR
+    )
+    return [_msg(text)]
 
 
 def build_reply(incoming_text: str, session: dict):
@@ -223,13 +342,13 @@ def build_reply(incoming_text: str, session: dict):
     text = (incoming_text or "").strip()
     normalized = text.lower()
 
-    # Primer mensaje de un contacto → mensaje de bienvenida EXACTO
+    # Primer mensaje → bienvenida EXACTA
     if not session.get("greeted"):
         session["greeted"] = True
         session["step"] = None
         return [_msg(WELCOME_MESSAGE)]
 
-    # Comando global: volver al menú principal
+    # Comando global: volver al menú
     if normalized in ("volver", "atras", "atrás", "menu", "menú", "regresar", "inicio") or any(
         k in normalized for k in ["opciones", "servicios"]
     ):
@@ -243,34 +362,49 @@ def build_reply(incoming_text: str, session: dict):
 
     step = session.get("step")
 
-    # Capturar el nombre y saludar, luego entregar el servicio elegido
-    if step == "ask_name":
-        session["name"] = text
-        sid = session.pop("pending_service", None)
-        greeting = _msg(f"¡Mucho gusto, {text}! 😊 Con gusto te ayudo. 🙌")
-        if sid:
-            return [greeting] + _deliver_service(session, sid)
-        session["step"] = None
-        return [greeting, _msg(WELCOME_MESSAGE)]
-
-    # Selección de servicio en el menú
-    if text in SERVICES:
-        # Si aún no tenemos el nombre, lo pedimos primero
-        if not session.get("name"):
-            session["pending_service"] = text
-            session["step"] = "ask_name"
-            return [_msg(ASK_NAME + BACK_HINT)]
-        return _deliver_service(session, text)
-
-    # Flujo vehicular: esperando la marca/modelo del vehículo
+    # ----- Manejo de pasos activos (antes de la selección de menú) -----
     if step == "vehicle":
-        session["step"] = None
         session["vehicle"] = text
-        if session.get("service") == "1":
+        sid = session.get("service")
+        if sid == "1":
             return _option1_plans(session, text)
-        return [_msg(vehicle_ack(session.get("name", ""), text) + BACK_HINT)]
+        if sid == "2":
+            session["step"] = "ppf_protect"
+            return [_msg(vehicle_ack(session.get("name", ""), text) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
+        session["step"] = None
+        return [_msg(vehicle_ack(session.get("name", ""), text) + AGENDAR + BACK_HINT)]
 
-    # Flujo arquitectónico: ciudad → lugar → medidas → asesor
+    if step == "opt1_choice":
+        plan = None
+        if normalized in OPT1_PLAN_NAMES:
+            plan = OPT1_PLAN_NAMES[normalized]
+        elif "ceram" in normalized or "cerám" in normalized:
+            plan = "Plan Cerámico"
+        elif "high" in normalized or "control" in normalized:
+            plan = "Plan High Control"
+        elif "irr" in normalized or "infrarroj" in normalized:
+            plan = "Plan IRR"
+        if not plan:
+            return [_msg("Por favor elige un plan válido 🙂\n\n" + OPT1_CHOICE_PROMPT + BACK_HINT)]
+        session["opt1_plan"] = plan
+        session["step"] = None
+        return [_msg(f"¡Excelente elección! 🙌 El *{plan}* es ideal para tu vehículo." + AGENDAR + BACK_HINT)]
+
+    if step == "ppf_protect":
+        session["step"] = None
+        if normalized in ("1",) or "total" in normalized:
+            return [_msg(PPF_TOTAL + AGENDAR + BACK_HINT)]
+        if normalized in ("2",) or "pintura" in normalized:
+            return [_msg(PPF_PINTURA + AGENDAR + BACK_HINT)]
+        if normalized in ("3",) or "piano" in normalized:
+            msgs = _piano_black(session)
+            msgs[-1]["text"] += BACK_HINT
+            return msgs
+        if normalized in ("4",) or "acril" in normalized or "acríl" in normalized:
+            return [_msg(PPF_ACRILICAS + AGENDAR + BACK_HINT)]
+        session["step"] = "ppf_protect"
+        return [_msg("Por favor elige una opción válida 🙂\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
+
     if step == "arch_city":
         session["arch_city"] = text
         session["step"] = "arch_location"
@@ -284,21 +418,14 @@ def build_reply(incoming_text: str, session: dict):
     if step == "arch_measures":
         session["arch_measures"] = text
         session["step"] = None
-        return [
-            _msg(
-                arch_ack(
-                    session.get("name", ""),
-                    session.get("arch_city", "-"),
-                    session.get("arch_location", "-"),
-                    text,
-                )
-                + BACK_HINT
-            )
-        ]
+        return [_msg(arch_ack(session.get("name", ""), session.get("arch_city", "-"),
+                              session.get("arch_location", "-"), text) + AGENDAR + BACK_HINT)]
 
-    # Saludo → bienvenida
+    # ----- Sin paso activo: selección de servicio en el menú -----
+    if text in SERVICES:
+        return _deliver_service(session, text)
+
     if any(k in normalized for k in ["hola", "buenas", "buenos", "hi", "hello", "info", "informacion", "información"]):
         return [_msg(WELCOME_MESSAGE)]
 
-    # Cualquier otra cosa: repetir el menú amablemente
     return [_msg(INVALID_PREFIX + WELCOME_MESSAGE)]

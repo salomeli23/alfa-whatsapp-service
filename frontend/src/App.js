@@ -32,6 +32,7 @@ function ChatSimulator() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
+  const [userName, setUserName] = useState("");
   const scrollRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -53,6 +54,7 @@ function ChatSimulator() {
         message: text,
         contact: CONTACT_ID,
         reset,
+        name: userName || "Cliente",
       });
       const botMsgs = (res.data.messages || []).map((m) => ({
         role: "bot",
@@ -101,8 +103,16 @@ function ChatSimulator() {
           <div className="h-full flex flex-col items-center justify-center text-center px-6 gap-4">
             <MessageCircle className="text-emerald-400" size={40} />
             <p className="text-zinc-300 text-sm">
-              Prueba la conversación real del bot. Pulsa para iniciar como un cliente nuevo.
+              Prueba la conversación real del bot. En WhatsApp, Andrea toma tu nombre automáticamente;
+              aquí escríbelo para simularlo.
             </p>
+            <input
+              data-testid="name-input"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="Tu nombre (ej. Camila)"
+              className="wa-input !bg-white/5 !rounded-full text-center max-w-[220px]"
+            />
             <button data-testid="start-chat-btn" onClick={startChat} className="wa-btn">
               Iniciar chat
             </button>

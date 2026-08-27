@@ -30,11 +30,15 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 
 ## Implementado (2026-06)
 - ✅ Mensaje de bienvenida EXACTO en primer contacto.
-- ✅ Info detallada para servicios 1–5 con oferta de asesor humano.
-- ✅ Repetición amable del menú ante entradas inválidas.
-- ✅ Handoff a asesor humano (palabra "asesor") y retorno a menú ("menú").
-- ✅ Landing page con simulador de chat en vivo.
-- ✅ Tests: backend 16/16 pytest, frontend 100%.
+- ✅ Nombre automático desde el perfil de WhatsApp (ProfileName); nunca se pregunta.
+- ✅ Saludo con el nombre tras elegir opción del menú.
+- ✅ Hint global "volver" para regresar al menú en cualquier momento.
+- ✅ Opción 1: 3 planes (imágenes) + 3 videos y pregunta cuál plan gustó.
+- ✅ Opción 2 (PPF): sin línea de precio; submenú (Protección Total, Pintura Completa, Piano Black, Partes Acrílicas) con catálogo Piano Black de 10 modelos (imagen + precio + piezas) y detección automática del modelo.
+- ✅ Opción 3 y 5: info + marca/modelo + pase a asesor y agendar.
+- ✅ Opción 4 (Arquitectónico): ciudad → lugar → medidas → resumen + agendar.
+- ✅ Multimedia por WhatsApp (TwiML <Media>) y en el simulador web (img/video).
+- ✅ Tests: backend 26/26 pytest, frontend 100%.
 
 ## Pendiente / Backlog
 - P1: Validar firma X-Twilio-Signature en el webhook (seguridad producción).

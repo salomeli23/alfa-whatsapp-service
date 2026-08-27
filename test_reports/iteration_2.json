@@ -1,0 +1,22 @@
+{
+  "summary": "Regression completa del bot Andrea con las nuevas features: (a) ProfileName automatico y saludo por nombre, (b) comando global 'volver', (c) Opción 1 con 3 planes + 3 videos y selección de plan, (d) Opción 2 PPF sin línea de precio con submenú de 4 protecciones y catálogo Piano Black de 10 modelos. Se reescribió /app/backend/tests/test_bot_andrea.py para la nueva firma build_reply/preview (messages[{text,media[]}]) y añadió 26 tests: 26/26 PASSED. Frontend validado con Playwright en la URL pública (name-input, quick-1..5, quick-volver, msg-bot-*, media-img-*, media-video-*) - todos los flujos OK.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": ["/app/backend/tests/test_bot_andrea.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "sessions es dict en memoria por proceso: en despliegues con >1 worker el estado por From será inconsistente (mismo problema que iteración 1); considerar Redis/Mongo con TTL.",
+    "No hay validación del firmante Twilio (X-Twilio-Signature) en /api/whatsapp/webhook: recomendable en producción.",
+    "find_pb_model usa substring matching bidireccional (nc in kc or kc in nc) - riesgo de falsos positivos con nombres muy cortos, aunque en la práctica los keys tienen al menos 6+ chars.",
+    "_option1_plans genera 8 mensajes por request (1 saludo + 3 planes + 1 header videos + 3 videos + 1 prompt); WhatsApp/Twilio impone rate limits en algunos entornos - monitorear en producción.",
+    "El paso 'ppf_protect' con input inválido vuelve a establecer session['step']='ppf_protect' pero antes ya lo puso a None (líneas 394 y 405) - funciona pero es redundante; una lectura rápida lo hace confuso."
+  ],
+  "updated_files": ["/app/backend/tests/test_bot_andrea.py", "/app/test_reports/iteration_2.json", "/app/test_reports/pytest/pytest_results.xml"],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "100%"},
+  "test_credentials": "N/A",
+  "seed_data_creation": "N/A - sessions dict en memoria; cada test usa contact/From con uuid único",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend expone /api/bot/preview con payload {message, contact, reset, name} y responde {messages:[{text,media[]}]}. El webhook /api/whatsapp/webhook usa Form ProfileName y responde TwiML XML con múltiples <Message>/<Media>. Estado por contacto en dict global 'sessions' - reiniciar backend limpia estado. Piano Black catalog en PB_MODELS (10 vehículos). Los tests usan REACT_APP_BACKEND_URL desde /app/frontend/.env como fallback si no está en env.",
+  "rca of the issue": "N/A - no se encontraron bugs"
+}
