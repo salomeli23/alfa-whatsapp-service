@@ -1,15 +1,14 @@
 WELCOME_MESSAGE = (
-    "¡Hola! 👋 Soy Andrea 🙋‍♀️, asesora de Alfa Polarizados. "
-    "📍 Estamos ubicados en la Cra. 49 #134A-41 – Barrio Spring, Bogotá. "
-    "Estoy lista para ayudarte a elegir el mejor servicio para tu vehículo. 😊 "
-    "Trabajamos con materiales de alta calidad y procesos profesionales, "
-    "diseñados para clientes que realmente valoran la calidad y el detalle. 🛡️ "
-    "💬 Indícame qué servicio deseas: "
-    "1️⃣ Polarizado y seguridad vehicular 🚗 "
-    "2️⃣ PPF (Protección de pintura, Piano Black y partes acrílicas) "
-    "3️⃣ Película Antiatraco 🚨 "
-    "4️⃣ Polarizado Arquitectónico 🏢 "
-    "5️⃣ Detailing Profesional ✨ "
+    "¡Hola! 👋 Soy Andrea 🙋‍♀️, asesora de Alfa Polarizados.\n"
+    "📍 Estamos ubicados en la Cra. 49 #134A-41 – Barrio Spring, Bogotá.\n"
+    "Estoy lista para ayudarte a elegir el mejor servicio para tu vehículo. 😊\n"
+    "Trabajamos con materiales de alta calidad y procesos profesionales, diseñados para clientes que realmente valoran la calidad y el detalle. 🛡️\n"
+    "💬 Indícame qué servicio deseas:\n"
+    "1️⃣ Polarizado y seguridad vehicular 🚗\n"
+    "2️⃣ PPF (Protección de pintura, Piano Black y partes acrílicas)\n"
+    "3️⃣ Película Antiatraco 🚨\n"
+    "4️⃣ Polarizado Arquitectónico 🏢\n"
+    "5️⃣ Detailing Profesional ✨\n"
     "📌 Responde con el número de la opción."
 )
 
@@ -17,26 +16,44 @@ INVALID_PREFIX = (
     "No entendí tu mensaje 🤔. Con gusto te ayudo, elige una de nuestras opciones 👇\n\n"
 )
 
-# Cierre común que ofrece hablar con un asesor humano / dejar datos de contacto
-HUMAN_HANDOFF = (
+# Pregunta de continuación para servicios vehiculares (opciones 1, 2, 3 y 5)
+VEHICLE_PROMPT = (
+    "🚙 Para continuar con tu cotización:\n"
+    "Por favor indícame la marca y modelo de tu vehículo.\n"
+    "Ejemplo:\n"
+    "Toyota Corolla\n"
+    "o Mazda CX-5"
+)
+
+# Confirmación tras recibir la marca/modelo del vehículo
+def vehicle_ack(model: str) -> str:
+    return (
+        f"¡Gracias! 🙌 Registré tu vehículo: *{model}*.\n"
+        "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
+        "Si deseas atención inmediata escribe *ASESOR*, o escribe *MENÚ* para ver otros servicios. 🙂"
+    )
+
+# Cierre para el servicio arquitectónico (no vehicular)
+ARCH_HANDOFF = (
     "\n\n────────────\n"
     "¿Deseas una cotización personalizada o hablar con un asesor humano? 👨‍🔧\n"
-    "Responde *ASESOR* y déjame tu *nombre*, *modelo de vehículo* y *ciudad*, "
-    "y en breve un miembro de nuestro equipo te contactará. 📞\n"
-    "También puedes visitarnos en 📍 Cra. 49 #134A-41 – Barrio Spring, Bogotá.\n"
+    "Responde *ASESOR* y déjame tu *nombre*, tu *ciudad* y una breve descripción del espacio "
+    "(ventanas / fachada / m² aprox.), y un miembro de nuestro equipo te contactará. 📞\n"
     "Escribe *MENÚ* para volver a ver los servicios. 🙌"
 )
 
 HANDOFF_ACK = (
-    "¡Perfecto! 🙌 Un asesor de Alfa Polarizados revisará tu solicitud y te "
-    "contactará muy pronto. 📞\n"
+    "¡Perfecto! 🙌 Un asesor de Alfa Polarizados revisará tu solicitud y te contactará muy pronto. 📞\n"
     "Para agilizar tu atención, envíame en un solo mensaje: 👇\n"
     "• Tu *nombre* 🧑\n"
-    "• *Modelo y año* de tu vehículo 🚗\n"
+    "• *Marca y modelo* de tu vehículo (o descripción del espacio) 🚗\n"
     "• Tu *ciudad* 📍\n"
     "• El *servicio* que te interesa ✨\n\n"
     "¡Gracias por confiar en Alfa Polarizados! 💙"
 )
+
+# Servicios que continúan con la pregunta de vehículo
+VEHICLE_SERVICES = {"1", "2", "3", "5"}
 
 SERVICES = {
     "1": (
@@ -92,26 +109,41 @@ SERVICES = {
 }
 
 
-def build_reply(incoming_text: str, first_time: bool = False) -> str:
-    """Devuelve la respuesta del bot Andrea según el mensaje entrante."""
+def build_reply(incoming_text: str, session: dict) -> str:
+    """Devuelve la respuesta del bot Andrea y actualiza el estado de la sesión (dict)."""
     text = (incoming_text or "").strip()
     normalized = text.lower()
 
     # Primer mensaje de un contacto → mensaje de bienvenida EXACTO
-    if first_time:
+    if not session.get("greeted"):
+        session["greeted"] = True
+        session["awaiting_vehicle"] = False
         return WELCOME_MESSAGE
 
-    # Detectar solicitud de asesor humano
+    # Comandos globales
     if any(k in normalized for k in ["asesor", "humano", "agente", "persona"]):
+        session["awaiting_vehicle"] = False
         return HANDOFF_ACK
 
-    # Volver a mostrar el menú
     if any(k in normalized for k in ["menu", "menú", "opciones", "servicios"]):
+        session["awaiting_vehicle"] = False
         return WELCOME_MESSAGE
 
-    # Selección de servicio (solo el número)
+    # Selección de servicio
     if text in SERVICES:
-        return SERVICES[text] + HUMAN_HANDOFF
+        if text in VEHICLE_SERVICES:
+            session["awaiting_vehicle"] = True
+            session["service"] = text
+            return SERVICES[text] + "\n\n" + VEHICLE_PROMPT
+        # Servicio arquitectónico → contacto directo con asesor
+        session["awaiting_vehicle"] = False
+        return SERVICES[text] + ARCH_HANDOFF
+
+    # Si estamos esperando la marca/modelo del vehículo, tomar el texto como respuesta
+    if session.get("awaiting_vehicle"):
+        session["awaiting_vehicle"] = False
+        session["vehicle"] = text
+        return vehicle_ack(text)
 
     # Saludo → bienvenida
     if any(k in normalized for k in ["hola", "buenas", "buenos", "hi", "hello", "info", "informacion", "información"]):

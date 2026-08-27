@@ -28,8 +28,8 @@ app = FastAPI(title="Alfa Polarizados - Bot Andrea")
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-# Estado en memoria: números que ya escribieron al menos una vez (para bienvenida)
-seen_contacts: set[str] = set()
+# Estado en memoria: sesión por contacto (saludo, servicio, esperando vehículo)
+sessions: dict[str, dict] = {}
 
 
 @api_router.get("/")
@@ -62,11 +62,9 @@ async def bot_preview(payload: dict):
     message = payload.get("message", "")
     reset = payload.get("reset", False)
     contact = payload.get("contact", "preview-user")
-    first_time = False
-    if reset or contact not in seen_contacts:
-        first_time = True
-        seen_contacts.add(contact)
-    reply = build_reply(message, first_time=first_time)
+    if reset or contact not in sessions:
+        sessions[contact] = {}
+    reply = build_reply(message, sessions[contact])
     return {"reply": reply}
 
 
@@ -78,11 +76,8 @@ async def whatsapp_webhook(
     """Webhook que Twilio invoca al recibir un mensaje de WhatsApp."""
     logger.info("WhatsApp entrante de %s: %s", From, Body)
 
-    first_time = From not in seen_contacts
-    if From:
-        seen_contacts.add(From)
-
-    reply_text = build_reply(Body, first_time=first_time)
+    session = sessions.setdefault(From, {})
+    reply_text = build_reply(Body, session)
 
     twiml = MessagingResponse()
     twiml.message(reply_text)
