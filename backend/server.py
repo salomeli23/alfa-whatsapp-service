@@ -9,7 +9,7 @@ from typing import Optional
 
 from twilio.twiml.messaging_response import MessagingResponse
 
-from bot_messages import build_reply, WELCOME_MESSAGE, SERVICES
+from bot_messages import build_reply, WELCOME_MESSAGE, SERVICES, AUDIO_HANDOFF
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -76,15 +76,23 @@ async def whatsapp_webhook(
     Body: str = Form(default=""),
     From: str = Form(default=""),
     ProfileName: str = Form(default=""),
+    NumMedia: str = Form(default="0"),
+    MediaContentType0: str = Form(default=""),
 ):
     """Webhook que Twilio invoca al recibir un mensaje de WhatsApp."""
-    logger.info("WhatsApp entrante de %s (%s): %s", From, ProfileName, Body)
+    logger.info("WhatsApp entrante de %s (%s): %s [media=%s %s]", From, ProfileName, Body, NumMedia, MediaContentType0)
 
     session = sessions.setdefault(From, {})
     # Nombre automático desde el perfil de WhatsApp (nunca se pregunta)
     if ProfileName and not session.get("name"):
         session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
-    messages = build_reply(Body, session)
+
+    # Si el cliente envía un audio/nota de voz → remitir a la asesora
+    has_media = NumMedia.isdigit() and int(NumMedia) > 0
+    if has_media and MediaContentType0.startswith("audio"):
+        messages = [{"text": AUDIO_HANDOFF, "media": []}]
+    else:
+        messages = build_reply(Body, session)
 
     twiml = MessagingResponse()
     for m in messages:

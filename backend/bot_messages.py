@@ -253,6 +253,13 @@ def arch_ack(name: str, city: str, location: str, measures: str) -> str:
     )
 
 
+AUDIO_HANDOFF = (
+    "🎧 Recibí tu mensaje de voz. Para darte la mejor atención, te comunico con una de "
+    "nuestras asesoras 🙋‍♀️, quien continuará la conversación contigo en breve. 😊\n"
+    "Mientras tanto, también puedes escribirme tu consulta por texto. 💬"
+)
+
+
 HANDOFF_ACK = (
     "¡Perfecto! 🙌 Un asesor de Alfa Polarizados revisará tu solicitud y te contactará muy pronto. 📞\n"
     "Para agilizar tu atención, envíame en un solo mensaje: 👇\n"
