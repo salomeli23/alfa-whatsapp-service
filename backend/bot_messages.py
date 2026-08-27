@@ -34,13 +34,41 @@ def vehicle_ack(model: str) -> str:
     )
 
 # Cierre para el servicio arquitectónico (no vehicular)
-ARCH_HANDOFF = (
-    "\n\n────────────\n"
-    "¿Deseas una cotización personalizada o hablar con un asesor humano? 👨‍🔧\n"
-    "Responde *ASESOR* y déjame tu *nombre*, tu *ciudad* y una breve descripción del espacio "
-    "(ventanas / fachada / m² aprox.), y un miembro de nuestro equipo te contactará. 📞\n"
-    "Escribe *MENÚ* para volver a ver los servicios. 🙌"
+ARCH_CITY = (
+    "Para ayudarte con tu proyecto de Polarizado Arquitectónico, primero indícame:\n"
+    "📍 ¿En qué ciudad se encuentra el proyecto?"
 )
+
+ARCH_LOCATION = (
+    "Ahora cuéntame:\n"
+    "🏢 ¿Dónde se realizará la instalación?\n"
+    "Por ejemplo:\n"
+    "- Casa\n"
+    "- Apartamento\n"
+    "- Oficina\n"
+    "- Local comercial\n"
+    "- Edificio\n"
+    "- Otro"
+)
+
+ARCH_MEASURES = (
+    "Ahora indícame las medidas aproximadas del vidrio.\n"
+    "Ejemplos:\n"
+    "📏 2 m x 1.50 m\n"
+    "📏 3 m x 2 m\n"
+    "Si son varias ventanas puedes escribirlas todas."
+)
+
+
+def arch_ack(city: str, location: str, measures: str) -> str:
+    return (
+        "¡Perfecto! 🙌 Resumen de tu proyecto de *Polarizado Arquitectónico*:\n"
+        f"📍 Ciudad: *{city}*\n"
+        f"🏢 Lugar: *{location}*\n"
+        f"📏 Medidas: *{measures}*\n\n"
+        "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
+        "Si deseas atención inmediata escribe *ASESOR*, o escribe *MENÚ* para ver otros servicios. 🙂"
+    )
 
 HANDOFF_ACK = (
     "¡Perfecto! 🙌 Un asesor de Alfa Polarizados revisará tu solicitud y te contactará muy pronto. 📞\n"
@@ -117,33 +145,56 @@ def build_reply(incoming_text: str, session: dict) -> str:
     # Primer mensaje de un contacto → mensaje de bienvenida EXACTO
     if not session.get("greeted"):
         session["greeted"] = True
-        session["awaiting_vehicle"] = False
+        session["step"] = None
         return WELCOME_MESSAGE
 
     # Comandos globales
     if any(k in normalized for k in ["asesor", "humano", "agente", "persona"]):
-        session["awaiting_vehicle"] = False
+        session["step"] = None
         return HANDOFF_ACK
 
     if any(k in normalized for k in ["menu", "menú", "opciones", "servicios"]):
-        session["awaiting_vehicle"] = False
+        session["step"] = None
         return WELCOME_MESSAGE
 
     # Selección de servicio
     if text in SERVICES:
         if text in VEHICLE_SERVICES:
-            session["awaiting_vehicle"] = True
+            session["step"] = "vehicle"
             session["service"] = text
             return SERVICES[text] + "\n\n" + VEHICLE_PROMPT
-        # Servicio arquitectónico → contacto directo con asesor
-        session["awaiting_vehicle"] = False
-        return SERVICES[text] + ARCH_HANDOFF
+        # Servicio arquitectónico → flujo de preguntas (ciudad → lugar → medidas)
+        session["step"] = "arch_city"
+        session["service"] = text
+        return SERVICES[text] + "\n\n" + ARCH_CITY
 
-    # Si estamos esperando la marca/modelo del vehículo, tomar el texto como respuesta
-    if session.get("awaiting_vehicle"):
-        session["awaiting_vehicle"] = False
+    step = session.get("step")
+
+    # Flujo vehicular: esperando la marca/modelo del vehículo
+    if step == "vehicle":
+        session["step"] = None
         session["vehicle"] = text
         return vehicle_ack(text)
+
+    # Flujo arquitectónico: ciudad → lugar → medidas → asesor
+    if step == "arch_city":
+        session["arch_city"] = text
+        session["step"] = "arch_location"
+        return ARCH_LOCATION
+
+    if step == "arch_location":
+        session["arch_location"] = text
+        session["step"] = "arch_measures"
+        return ARCH_MEASURES
+
+    if step == "arch_measures":
+        session["arch_measures"] = text
+        session["step"] = None
+        return arch_ack(
+            session.get("arch_city", "-"),
+            session.get("arch_location", "-"),
+            text,
+        )
 
     # Saludo → bienvenida
     if any(k in normalized for k in ["hola", "buenas", "buenos", "hi", "hello", "info", "informacion", "información"]):
