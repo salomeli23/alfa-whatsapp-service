@@ -119,12 +119,52 @@ PPF_PINTURA = (
 )
 
 PPF_ACRILICAS = (
-    "💡 *PPF – Partes Acrílicas*\n"
-    "Protegemos las partes acrílicas de tu vehículo (molduras, apliques y detalles) con:\n"
-    "✅ Película PPF Premium.\n"
-    "✅ Corte de precisión en plotter.\n"
-    "✅ Garantía de 10 años.\n"
-    "Un asesor te enviará la cotización exacta según tu vehículo. 😊"
+    "¡Gracias por tu interés en proteger las piezas en piano black de tu vehículo con nuestro ✨ PPF Partes Acrílicas ✨ 🖤.\n\n"
+    "Incluye protección en:\n"
+    "🔹 Espejos\n"
+    "🔹 Farolas\n"
+    "🔹 Stops\n\n"
+    "✅ Corte de precisión en plotter\n"
+    "✅ Película premium con 10 años de garantía\n"
+    "✅ Instalación profesional.\n\n"
+    "Con este servicio tu vehículo queda libre de rayones, manchas y desgaste, manteniendo ese brillo elegante por mucho más tiempo ✨.\n\n"
+    "📅 Agenda hoy mismo para asegurar precio y disponibilidad.\n\n"
+    "🤝 ¿Te reservo tu cupo para la instalación?"
+)
+
+
+# ---- Opción 3: Película Antiatraco ----
+ANTIATRACO_IMG = "https://res.cloudinary.com/dewemwkqf/image/upload/v1785534807/planes_bjx5xb.jpg"
+ANTIATRACO_VIDEO = "https://res.cloudinary.com/dewemwkqf/video/upload/v1785534808/pruebaseguridad_qgxt4u.mp4"
+
+
+# ---- Opción 5: Detailing Profesional ----
+DETAILING_LIST = (
+    "✨ ¡Dale a tu vehículo el cuidado premium que realmente merece! 🚗✨\n"
+    "Nuestro Detailing Profesional va mucho más allá de un lavado común. Es un proceso completo diseñado para restaurar, proteger y resaltar cada detalle de tu vehículo:\n\n"
+    "🔹 *Descontaminación y tratamiento de pintura*\n"
+    "Eliminamos impurezas profundas y devolvemos el brillo original, dejando la superficie suave, protegida y como nueva.\n\n"
+    "🔹 *Limpieza profunda de tapicería, techos y carteras*\n"
+    "Removemos manchas, suciedad y olores, devolviendo frescura y elegancia al interior.\n\n"
+    "🔹 *Lavado de motor y chasis*\n"
+    "Limpieza técnica que mejora la apariencia y ayuda al buen funcionamiento de tu vehículo.\n\n"
+    "🔹 *Lavado general detallado*\n"
+    "Cada rincón se limpia con precisión, sin dejar espacios olvidados.\n\n"
+    "🔹 *Hidratación de partes negras*\n"
+    "Recuperamos el color y la vida de plásticos y molduras, logrando un acabado renovado.\n\n"
+    "💎 No es solo limpieza… es transformación.\n"
+    "Tu carro no solo se verá mejor, se sentirá como nuevo.\n\n"
+    "Cuando quieres agendar ?👩‍💻"
+)
+
+
+# ---- Ubicación ----
+LOCATION_MSG = (
+    "📍 *Alfa Polarizados*\n"
+    "Cra. 49 #134A-41 – Barrio Spring, Bogotá.\n"
+    "🕗 Horario: Lunes a Sábado de 8:00 a.m. a 5:00 p.m.\n"
+    "🗺️ Ubícanos en Google Maps:\n"
+    "https://www.google.com/maps/search/Alfa%20polarizados/@4.7206,-74.0554,17z?hl=en"
 )
 
 # Catálogo Piano Black (10 modelos)
@@ -360,19 +400,42 @@ def build_reply(incoming_text: str, session: dict):
         session["step"] = None
         return [_msg(HANDOFF_ACK)]
 
+    # Intención global: ubicación / dirección / horario (no altera el paso actual)
+    if any(k in normalized for k in [
+        "ubicad", "ubicac", "direccion", "dirección", "donde estan", "dónde están",
+        "donde queda", "dónde queda", "mapa", "gps", "como llego", "cómo llego",
+        "horario", "atienden", "ciudad estan", "ubicados"
+    ]):
+        return [_msg(LOCATION_MSG)]
+
     step = session.get("step")
 
     # ----- Manejo de pasos activos (antes de la selección de menú) -----
     if step == "vehicle":
         session["vehicle"] = text
         sid = session.get("service")
+        name = session.get("name", "")
         if sid == "1":
             return _option1_plans(session, text)
         if sid == "2":
             session["step"] = "ppf_protect"
-            return [_msg(vehicle_ack(session.get("name", ""), text) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
+            return [_msg(vehicle_ack(name, text) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
+        if sid == "3":
+            session["step"] = None
+            saludo = f"¡Gracias, {name}! 🙌 Registré tu vehículo: *{text}*." if name else f"¡Gracias! 🙌 Registré tu vehículo: *{text}*."
+            return [
+                _msg(saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇", media=[ANTIATRACO_IMG]),
+                _msg("▶️ *Prueba de Seguridad*", media=[ANTIATRACO_VIDEO]),
+                _msg("¿Deseas *agendar* tu instalación? Un asesor te ayudará a coordinar la cita. 😊" + AGENDAR + BACK_HINT),
+            ]
+        if sid == "5":
+            session["step"] = None
+            return [
+                _msg(DETAILING_LIST),
+                _msg("Un asesor te ayudará a coordinar tu cita. 😊" + BACK_HINT),
+            ]
         session["step"] = None
-        return [_msg(vehicle_ack(session.get("name", ""), text) + AGENDAR + BACK_HINT)]
+        return [_msg(vehicle_ack(name, text) + AGENDAR + BACK_HINT)]
 
     if step == "opt1_choice":
         plan = None
@@ -395,13 +458,13 @@ def build_reply(incoming_text: str, session: dict):
         if normalized in ("1",) or "total" in normalized:
             return [_msg(PPF_TOTAL + AGENDAR + BACK_HINT)]
         if normalized in ("2",) or "pintura" in normalized:
-            return [_msg(PPF_PINTURA + AGENDAR + BACK_HINT)]
+            return [_msg(PPF_PINTURA + BACK_HINT)]
         if normalized in ("3",) or "piano" in normalized:
             msgs = _piano_black(session)
             msgs[-1]["text"] += BACK_HINT
             return msgs
         if normalized in ("4",) or "acril" in normalized or "acríl" in normalized:
-            return [_msg(PPF_ACRILICAS + AGENDAR + BACK_HINT)]
+            return [_msg(PPF_ACRILICAS + BACK_HINT)]
         session["step"] = "ppf_protect"
         return [_msg("Por favor elige una opción válida 🙂\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
 
