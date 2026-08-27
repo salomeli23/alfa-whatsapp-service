@@ -328,6 +328,19 @@
   color: #e7ffef;
   border-top-right-radius: 3px;
 }
+.bubble-media {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.media-el {
+  width: 100%;
+  max-width: 240px;
+  border-radius: 8px;
+  display: block;
+  background: #000;
+}
 .bubble.typing {
   display: flex;
   gap: 4px;

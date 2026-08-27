@@ -54,7 +54,12 @@ function ChatSimulator() {
         contact: CONTACT_ID,
         reset,
       });
-      setMessages((m) => [...m, { role: "bot", text: res.data.reply }]);
+      const botMsgs = (res.data.messages || []).map((m) => ({
+        role: "bot",
+        text: m.text,
+        media: m.media || [],
+      }));
+      setMessages((m) => [...m, ...botMsgs]);
     } catch (e) {
       setMessages((m) => [...m, { role: "bot", text: "⚠️ Error de conexión con el bot." }]);
     } finally {
@@ -107,6 +112,17 @@ function ChatSimulator() {
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "bubble-row end" : "bubble-row start"}>
             <div className={m.role === "user" ? "bubble user" : "bubble bot"} data-testid={`msg-${m.role}-${i}`}>
+              {m.media && m.media.length > 0 && (
+                <div className="bubble-media">
+                  {m.media.map((url, j) =>
+                    /\.(mp4|mov|webm)$/i.test(url) ? (
+                      <video key={j} src={url} controls playsInline className="media-el" data-testid={`media-video-${i}-${j}`} />
+                    ) : (
+                      <img key={j} src={url} alt="media" className="media-el" data-testid={`media-img-${i}-${j}`} />
+                    )
+                  )}
+                </div>
+              )}
               {m.text}
             </div>
           </div>
@@ -124,7 +140,7 @@ function ChatSimulator() {
       {started && (
         <div className="chat-input">
           <div className="quick-replies">
-            {["1", "2", "3", "4", "5", "asesor", "menú"].map((q) => (
+            {["1", "2", "3", "4", "5", "asesor", "volver"].map((q) => (
               <button
                 key={q}
                 data-testid={`quick-${q}`}

@@ -64,8 +64,8 @@ async def bot_preview(payload: dict):
     contact = payload.get("contact", "preview-user")
     if reset or contact not in sessions:
         sessions[contact] = {}
-    reply = build_reply(message, sessions[contact])
-    return {"reply": reply}
+    messages = build_reply(message, sessions[contact])
+    return {"messages": messages}
 
 
 @api_router.post("/whatsapp/webhook")
@@ -77,10 +77,13 @@ async def whatsapp_webhook(
     logger.info("WhatsApp entrante de %s: %s", From, Body)
 
     session = sessions.setdefault(From, {})
-    reply_text = build_reply(Body, session)
+    messages = build_reply(Body, session)
 
     twiml = MessagingResponse()
-    twiml.message(reply_text)
+    for m in messages:
+        msg = twiml.message(m.get("text", ""))
+        for url in m.get("media") or []:
+            msg.media(url)
     return Response(content=str(twiml), media_type="application/xml")
 
 

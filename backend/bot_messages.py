@@ -12,9 +12,14 @@ WELCOME_MESSAGE = (
     "📌 Responde con el número de la opción."
 )
 
+# Se muestra en cualquier parte de la conversación
+BACK_HINT = "\n\n↩️ Escribe *volver* en cualquier momento para regresar al menú principal."
+
 INVALID_PREFIX = (
     "No entendí tu mensaje 🤔. Con gusto te ayudo, elige una de nuestras opciones 👇\n\n"
 )
+
+ASK_NAME = "Antes de darte la información, ¿me regalas tu *nombre*? 🙂"
 
 # Pregunta de continuación para servicios vehiculares (opciones 1, 2, 3 y 5)
 VEHICLE_PROMPT = (
@@ -25,15 +30,52 @@ VEHICLE_PROMPT = (
     "o Mazda CX-5"
 )
 
-# Confirmación tras recibir la marca/modelo del vehículo
-def vehicle_ack(model: str) -> str:
+
+def vehicle_ack(name: str, model: str) -> str:
+    saludo = f"¡Gracias, {name}! 🙌" if name else "¡Gracias! 🙌"
     return (
-        f"¡Gracias! 🙌 Registré tu vehículo: *{model}*.\n"
+        f"{saludo} Registré tu vehículo: *{model}*.\n"
         "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
-        "Si deseas atención inmediata escribe *ASESOR*, o escribe *MENÚ* para ver otros servicios. 🙂"
+        "Si deseas atención inmediata escribe *ASESOR*."
     )
 
-# Cierre para el servicio arquitectónico (no vehicular)
+
+# ---- Opción 1: planes y videos ----
+PLANS_OPT1 = [
+    {
+        "name": "Plan Cerámico 🧊",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1787153675/alfaceramico_qilg67.jpg",
+        "desc": (
+            "Tecnología 100% cerámica. Máximo rechazo de calor sin oscurecer de más y "
+            "sin interferencia en señal de celular/GPS. Ideal si buscas confort y calidad premium."
+        ),
+    },
+    {
+        "name": "Plan High Control 🎛️",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1787153675/alfahighcontrol_mrfsyh.jpg",
+        "desc": (
+            "Excelente control solar y privacidad a un gran precio. Buen rechazo de calor y "
+            "protección UV para el uso diario de tu vehículo."
+        ),
+    },
+    {
+        "name": "Plan IRR (Rechazo Infrarrojo) 🔆",
+        "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1787153675/alfa_irr_ghcrjt.jpg",
+        "desc": (
+            "Máximo rechazo de rayos infrarrojos para la mayor sensación de frescura y una "
+            "claridad excepcional. La opción de más alto desempeño."
+        ),
+    },
+]
+
+VIDEOS_OPT1 = [
+    {"title": "🔧 Instalación profesional", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154076/instalacion_seecyr.mp4"},
+    {"title": "🛡️ Prueba de seguridad", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154076/peliculaseguridad_i8zope.mp4"},
+    {"title": "👀 Visibilidad", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154083/visibilidad_il08yd.mp4"},
+]
+
+
+# ---- Opción 4: flujo arquitectónico ----
 ARCH_CITY = (
     "Para ayudarte con tu proyecto de Polarizado Arquitectónico, primero indícame:\n"
     "📍 ¿En qué ciudad se encuentra el proyecto?"
@@ -60,15 +102,17 @@ ARCH_MEASURES = (
 )
 
 
-def arch_ack(city: str, location: str, measures: str) -> str:
+def arch_ack(name: str, city: str, location: str, measures: str) -> str:
+    saludo = f"¡Perfecto, {name}! 🙌" if name else "¡Perfecto! 🙌"
     return (
-        "¡Perfecto! 🙌 Resumen de tu proyecto de *Polarizado Arquitectónico*:\n"
+        f"{saludo} Resumen de tu proyecto de *Polarizado Arquitectónico*:\n"
         f"📍 Ciudad: *{city}*\n"
         f"🏢 Lugar: *{location}*\n"
         f"📏 Medidas: *{measures}*\n\n"
         "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
-        "Si deseas atención inmediata escribe *ASESOR*, o escribe *MENÚ* para ver otros servicios. 🙂"
+        "Si deseas atención inmediata escribe *ASESOR*."
     )
+
 
 HANDOFF_ACK = (
     "¡Perfecto! 🙌 Un asesor de Alfa Polarizados revisará tu solicitud y te contactará muy pronto. 📞\n"
@@ -80,7 +124,6 @@ HANDOFF_ACK = (
     "¡Gracias por confiar en Alfa Polarizados! 💙"
 )
 
-# Servicios que continúan con la pregunta de vehículo
 VEHICLE_SERVICES = {"1", "2", "3", "5"}
 
 SERVICES = {
@@ -137,8 +180,46 @@ SERVICES = {
 }
 
 
-def build_reply(incoming_text: str, session: dict) -> str:
-    """Devuelve la respuesta del bot Andrea y actualiza el estado de la sesión (dict)."""
+def _msg(text: str, media=None):
+    return {"text": text, "media": media or []}
+
+
+def _deliver_service(session: dict, sid: str):
+    """Entrega la información de un servicio e inicia su flujo de seguimiento."""
+    session["service"] = sid
+    if sid in VEHICLE_SERVICES:
+        session["step"] = "vehicle"
+        return [_msg(SERVICES[sid] + "\n\n" + VEHICLE_PROMPT + BACK_HINT)]
+    # Opción 4 (arquitectónico)
+    session["step"] = "arch_city"
+    return [_msg(SERVICES[sid] + "\n\n" + ARCH_CITY + BACK_HINT)]
+
+
+def _option1_plans(session: dict, model: str):
+    name = session.get("name", "")
+    saludo = f"¡Gracias, {name}! 🙌" if name else "¡Gracias! 🙌"
+    msgs = [
+        _msg(
+            f"{saludo} Registré tu vehículo: *{model}*.\n\n"
+            "Estos son nuestros *3 planes de Polarizado y Seguridad Vehicular* 👇"
+        )
+    ]
+    for p in PLANS_OPT1:
+        msgs.append(_msg(f"*{p['name']}*\n{p['desc']}", media=[p["img"]]))
+    msgs.append(_msg("🎥 Mira nuestros resultados en video:"))
+    for v in VIDEOS_OPT1:
+        msgs.append(_msg(f"▶️ {v['title']}", media=[v["url"]]))
+    msgs.append(
+        _msg(
+            "Un asesor de Alfa Polarizados preparará tu *cotización personalizada* y te contactará muy pronto. 📞\n\n"
+            "Si deseas atención inmediata escribe *ASESOR*." + BACK_HINT
+        )
+    )
+    return msgs
+
+
+def build_reply(incoming_text: str, session: dict):
+    """Devuelve una lista de mensajes [{text, media[]}] y actualiza el estado de la sesión."""
     text = (incoming_text or "").strip()
     normalized = text.lower()
 
@@ -146,59 +227,78 @@ def build_reply(incoming_text: str, session: dict) -> str:
     if not session.get("greeted"):
         session["greeted"] = True
         session["step"] = None
-        return WELCOME_MESSAGE
+        return [_msg(WELCOME_MESSAGE)]
 
-    # Comandos globales
+    # Comando global: volver al menú principal
+    if normalized in ("volver", "atras", "atrás", "menu", "menú", "regresar", "inicio") or any(
+        k in normalized for k in ["opciones", "servicios"]
+    ):
+        session["step"] = None
+        return [_msg(WELCOME_MESSAGE)]
+
+    # Comando global: asesor humano
     if any(k in normalized for k in ["asesor", "humano", "agente", "persona"]):
         session["step"] = None
-        return HANDOFF_ACK
-
-    if any(k in normalized for k in ["menu", "menú", "opciones", "servicios"]):
-        session["step"] = None
-        return WELCOME_MESSAGE
-
-    # Selección de servicio
-    if text in SERVICES:
-        if text in VEHICLE_SERVICES:
-            session["step"] = "vehicle"
-            session["service"] = text
-            return SERVICES[text] + "\n\n" + VEHICLE_PROMPT
-        # Servicio arquitectónico → flujo de preguntas (ciudad → lugar → medidas)
-        session["step"] = "arch_city"
-        session["service"] = text
-        return SERVICES[text] + "\n\n" + ARCH_CITY
+        return [_msg(HANDOFF_ACK)]
 
     step = session.get("step")
+
+    # Capturar el nombre y saludar, luego entregar el servicio elegido
+    if step == "ask_name":
+        session["name"] = text
+        sid = session.pop("pending_service", None)
+        greeting = _msg(f"¡Mucho gusto, {text}! 😊 Con gusto te ayudo. 🙌")
+        if sid:
+            return [greeting] + _deliver_service(session, sid)
+        session["step"] = None
+        return [greeting, _msg(WELCOME_MESSAGE)]
+
+    # Selección de servicio en el menú
+    if text in SERVICES:
+        # Si aún no tenemos el nombre, lo pedimos primero
+        if not session.get("name"):
+            session["pending_service"] = text
+            session["step"] = "ask_name"
+            return [_msg(ASK_NAME + BACK_HINT)]
+        return _deliver_service(session, text)
 
     # Flujo vehicular: esperando la marca/modelo del vehículo
     if step == "vehicle":
         session["step"] = None
         session["vehicle"] = text
-        return vehicle_ack(text)
+        if session.get("service") == "1":
+            return _option1_plans(session, text)
+        return [_msg(vehicle_ack(session.get("name", ""), text) + BACK_HINT)]
 
     # Flujo arquitectónico: ciudad → lugar → medidas → asesor
     if step == "arch_city":
         session["arch_city"] = text
         session["step"] = "arch_location"
-        return ARCH_LOCATION
+        return [_msg(ARCH_LOCATION + BACK_HINT)]
 
     if step == "arch_location":
         session["arch_location"] = text
         session["step"] = "arch_measures"
-        return ARCH_MEASURES
+        return [_msg(ARCH_MEASURES + BACK_HINT)]
 
     if step == "arch_measures":
         session["arch_measures"] = text
         session["step"] = None
-        return arch_ack(
-            session.get("arch_city", "-"),
-            session.get("arch_location", "-"),
-            text,
-        )
+        return [
+            _msg(
+                arch_ack(
+                    session.get("name", ""),
+                    session.get("arch_city", "-"),
+                    session.get("arch_location", "-"),
+                    text,
+                )
+                + BACK_HINT
+            )
+        ]
 
     # Saludo → bienvenida
     if any(k in normalized for k in ["hola", "buenas", "buenos", "hi", "hello", "info", "informacion", "información"]):
-        return WELCOME_MESSAGE
+        return [_msg(WELCOME_MESSAGE)]
 
     # Cualquier otra cosa: repetir el menú amablemente
-    return INVALID_PREFIX + WELCOME_MESSAGE
+    return [_msg(INVALID_PREFIX + WELCOME_MESSAGE)]
