@@ -292,8 +292,7 @@ SERVICES = {
         "✅ Dificulta y retrasa los intentos de robo 🔐\n"
         "✅ Los fragmentos se mantienen unidos, evitando lesiones 🩹\n"
         "✅ Combinable con polarizado para privacidad total 🕶️\n"
-        "✅ Instalación profesional con garantía 🛡️\n\n"
-        "💵 Desde *$450.000 COP* (según el grosor de la película y el vehículo)."
+        "✅ Instalación profesional con garantía 🛡️"
     ),
     "4": (
         "🏢 *Polarizado Arquitectónico*\n\n"
