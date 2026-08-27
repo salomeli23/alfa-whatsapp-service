@@ -532,7 +532,11 @@ def build_reply(incoming_text: str, session: dict):
         if normalized in ("1",) or "total" in normalized:
             return [_msg(PPF_TOTAL + AGENDAR + BACK_HINT)]
         if normalized in ("2",) or "pintura" in normalized:
-            return [_msg(PPF_PINTURA + BACK_HINT)]
+            return [_msg(
+                "¡Perfecto! 🙌 Para *Pintura Completa* uno de nuestros asesores continuará "
+                "la conversación contigo para darte la cotización exacta según tu vehículo. 😊"
+                + AGENDAR + BACK_HINT
+            )]
         if normalized in ("3",) or "piano" in normalized:
             msgs = _piano_black(session)
             msgs[-1]["text"] += BACK_HINT
