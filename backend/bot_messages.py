@@ -206,18 +206,57 @@ def _collapse(s: str) -> str:
     return "".join(ch for ch in s.lower() if ch.isalnum())
 
 
+# Marca -> modelos del catálogo
+PB_BRANDS = {}
+for _key in PB_MODELS:
+    _brand = _key.split()[0]
+    PB_BRANDS.setdefault(_brand, []).append(_key)
+
+# Alias de serie/modelo para identificar la ficha correcta
+PB_ALIASES = {
+    "mazda cx-30": ["cx-30", "cx30"],
+    "mazda cx-5": ["cx-5", "cx5"],
+    "mazda 3": ["mazda 3", "mazda3"],
+    "tesla model 3": ["model 3", "model3"],
+    "tesla model y": ["model y", "modely"],
+    "ford territory": ["territory"],
+    "deepal s05": ["s05"],
+    "deepal s07": ["s07"],
+    "byd yuan up": ["yuan up", "yuanup"],
+    "byd yuan plus": ["yuan plus", "yuanplus"],
+}
+
+
+def pb_lookup(text: str):
+    """Devuelve ('model', data) | ('ambiguous', brand, [nombres]) | ('unknown', None, None)."""
+    if not text:
+        return ("unknown", None, None)
+    n = text.lower().strip()
+    nc = _collapse(text)
+
+    # 1) Coincidencia por alias específico (el alias más largo gana)
+    best, best_len = None, 0
+    for key, aliases in PB_ALIASES.items():
+        for a in aliases:
+            ac = _collapse(a)
+            if ac and ac in nc and len(ac) > best_len:
+                best, best_len = key, len(ac)
+    if best:
+        return ("model", PB_MODELS[best], None)
+
+    # 2) Marca detectada sin serie → ambiguo si tiene varios modelos
+    for brand, keys in PB_BRANDS.items():
+        if brand in n:
+            if len(keys) == 1:
+                return ("model", PB_MODELS[keys[0]], None)
+            return ("ambiguous", brand, [PB_MODELS[k]["nombre"] for k in keys])
+
+    return ("unknown", None, None)
+
+
 def find_pb_model(vehicle_text: str):
-    if not vehicle_text:
-        return None
-    n = vehicle_text.lower().strip()
-    nc = _collapse(vehicle_text)
-    for key, data in PB_MODELS.items():
-        if key in n or n in key:
-            return data
-        kc = _collapse(key)
-        if kc in nc or nc in kc:
-            return data
-    return None
+    kind, data, _ = pb_lookup(vehicle_text)
+    return data if kind == "model" else None
 
 
 # ---- Opción 4: flujo arquitectónico ----
@@ -424,6 +463,18 @@ def build_reply(incoming_text: str, session: dict):
         if sid == "1":
             return _option1_plans(session, text)
         if sid == "2":
+            result = pb_lookup(text)
+            if result[0] == "ambiguous":
+                brand, nombres = result[1], result[2]
+                session["step"] = "ppf_clarify_model"
+                session["ppf_brand"] = brand
+                ejemplos = " / ".join(nombres)
+                saludo = f"¡Gracias, {name}! 🙌" if name else "¡Gracias! 🙌"
+                return [_msg(
+                    f"{saludo} Veo que tu vehículo es *{brand.capitalize()}*.\n"
+                    "¿Cuál es la *serie/modelo* específico? Así te muestro la ficha correcta. 🙂\n\n"
+                    f"Opciones: {ejemplos}" + BACK_HINT
+                )]
             session["step"] = "ppf_protect"
             return [_msg(vehicle_ack(name, text) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
         if sid == "3":
@@ -442,6 +493,23 @@ def build_reply(incoming_text: str, session: dict):
             ]
         session["step"] = None
         return [_msg(vehicle_ack(name, text) + AGENDAR + BACK_HINT)]
+
+    if step == "ppf_clarify_model":
+        brand = session.get("ppf_brand", "")
+        # Combinar marca + serie para identificar el modelo exacto
+        combined = text if brand in text.lower() else f"{brand} {text}"
+        session["vehicle"] = combined
+        name = session.get("name", "")
+        session["step"] = "ppf_protect"
+        result = pb_lookup(combined)
+        if result[0] == "ambiguous":
+            ejemplos = " / ".join(result[2])
+            session["step"] = "ppf_clarify_model"
+            return [_msg(
+                "No logré identificar la serie 🤔. Por favor indícame el modelo exacto.\n\n"
+                f"Opciones: {ejemplos}" + BACK_HINT
+            )]
+        return [_msg(vehicle_ack(name, combined) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
 
     if step == "opt1_choice":
         plan = None
