@@ -281,7 +281,7 @@ SERVICES = {
         "✅ Mayor privacidad y seguridad ante robos 🔒\n"
         "✅ Reduce el deslumbramiento y mejora la visibilidad 👀\n"
         "✅ Garantía y instalación profesional certificada 🛡️\n\n"
-        "💵 Desde *$250.000 COP* (varía según el modelo del vehículo y el tipo de lámina)."
+        "💵 Desde *$650.000 COP* (varía según el modelo del vehículo y el tipo de lámina)."
     ),
     "2": (
         "🛡️ *PPF – Protección de Pintura (Paint Protection Film)*\n\n"
