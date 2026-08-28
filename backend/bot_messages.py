@@ -490,8 +490,11 @@ def build_reply(incoming_text: str, session: dict):
             session["step"] = "antiatraco_choice"
             saludo = f"¡Gracias, {name}! 🙌 Registré tu vehículo: *{text}*." if name else f"¡Gracias! 🙌 Registré tu vehículo: *{text}*."
             return [
-                _msg(saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇", media=[ANTIATRACO_IMG]),
-                _msg("😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT),
+                _msg(
+                    saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇\n\n"
+                    "😍 ¿Cuál opción te gusta más? Indícame el plan que prefieres." + BACK_HINT,
+                    media=[ANTIATRACO_IMG],
+                ),
             ]
         if sid == "5":
             session["step"] = None
