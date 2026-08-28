@@ -100,23 +100,52 @@ async def whatsapp_webhook(
     if ProfileName and not session.get("name"):
         session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
 
-    # El cliente respondió → actualizar actividad y limpiar bandera de reenganche
+    # El cliente respondió → actualizar actividad, cancelar diferidos y reenganche pendientes
     session["last_activity"] = time.time()
     session["reengaged"] = False
+    session["pending_delayed"] = False
 
     # Si el cliente envía un audio/nota de voz → remitir a la asesora
     has_media = NumMedia.isdigit() and int(NumMedia) > 0
     if has_media and MediaContentType0.startswith("audio"):
-        messages = [{"text": AUDIO_HANDOFF, "media": []}]
+        messages = [{"text": AUDIO_HANDOFF, "media": [], "delay": 0}]
     else:
         messages = build_reply(Body, session)
 
+    immediate = [m for m in messages if not m.get("delay")]
+    delayed = [m for m in messages if m.get("delay")]
+
+    # Los mensajes diferidos (ej. la pregunta tras el video) se envían después vía REST
+    if delayed and twilio_client and From.startswith("whatsapp:"):
+        session["pending_delayed"] = True
+        asyncio.create_task(_send_delayed(From, delayed, session))
+    elif delayed:
+        immediate = immediate + delayed  # fallback: sin cliente REST, enviar todo junto
+
     twiml = MessagingResponse()
-    for m in messages:
+    for m in immediate:
         msg = twiml.message(m.get("text", ""))
         for url in m.get("media") or []:
             msg.media(url)
     return Response(content=str(twiml), media_type="application/xml")
+
+
+async def _send_delayed(contact: str, messages: list, session: dict):
+    """Envía mensajes diferidos (tras un retraso) por Twilio REST, si el cliente no respondió antes."""
+    for m in messages:
+        await asyncio.sleep(m.get("delay", 0))
+        if not session.get("pending_delayed"):
+            return  # el cliente ya escribió; se cancela el envío
+        try:
+            twilio_client.messages.create(
+                from_=f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
+                to=contact,
+                body=m.get("text", ""),
+                media_url=(m.get("media") or None),
+            )
+        except Exception as exc:
+            logger.error("Error enviando mensaje diferido a %s: %s", contact, exc)
+    session["pending_delayed"] = False
 
 
 @api_router.get("/whatsapp/webhook")

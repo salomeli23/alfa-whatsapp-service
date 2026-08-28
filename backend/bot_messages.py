@@ -136,6 +136,8 @@ PPF_ACRILICAS = (
 # ---- Opción 3: Película Antiatraco ----
 ANTIATRACO_IMG = "https://res.cloudinary.com/dewemwkqf/image/upload/v1785534807/planes_bjx5xb.jpg"
 ANTIATRACO_VIDEO = "https://res.cloudinary.com/dewemwkqf/video/upload/v1785534808/pruebaseguridad_qgxt4u.mp4"
+# La pregunta se envía después de que el video se cargue/vea
+ANTIATRACO_QUESTION_DELAY = 25
 
 
 # ---- Opción 5: Detailing Profesional ----
@@ -363,8 +365,8 @@ SERVICES = {
 }
 
 
-def _msg(text: str, media=None):
-    return {"text": text, "media": media or []}
+def _msg(text: str, media=None, delay: int = 0):
+    return {"text": text, "media": media or [], "delay": delay}
 
 
 def _deliver_service(session: dict, sid: str):
@@ -483,7 +485,10 @@ def build_reply(incoming_text: str, session: dict):
             return [
                 _msg(saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇", media=[ANTIATRACO_IMG]),
                 _msg("▶️ *Prueba de Seguridad*", media=[ANTIATRACO_VIDEO]),
-                _msg("😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT),
+                _msg(
+                    "😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT,
+                    delay=ANTIATRACO_QUESTION_DELAY,
+                ),
             ]
         if sid == "5":
             session["step"] = None

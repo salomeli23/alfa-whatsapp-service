@@ -60,12 +60,30 @@ function ChatSimulator() {
         role: "bot",
         text: m.text,
         media: m.media || [],
+        delay: m.delay || 0,
       }));
-      setMessages((m) => [...m, ...botMsgs]);
+      const immediate = botMsgs.filter((m) => !m.delay);
+      const delayed = botMsgs.filter((m) => m.delay);
+      setMessages((m) => [...m, ...immediate]);
+      if (delayed.length > 0) {
+        // Simula el envío diferido de la pregunta tras cargar/ver el video
+        let acc = 0;
+        delayed.forEach((dm, idx) => {
+          const uiDelay = Math.min(dm.delay, 4); // acortado para la demo
+          acc += uiDelay;
+          setTimeout(() => {
+            setMessages((m) => [...m, dm]);
+            if (idx === delayed.length - 1) setLoading(false);
+            scrollToBottom();
+          }, acc * 1000);
+        });
+      } else {
+        setLoading(false);
+      }
     } catch (e) {
       setMessages((m) => [...m, { role: "bot", text: "⚠️ Error de conexión con el bot." }]);
-    } finally {
       setLoading(false);
+    } finally {
       scrollToBottom();
     }
   };
