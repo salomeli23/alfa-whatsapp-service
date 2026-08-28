@@ -3,11 +3,14 @@ from fastapi.responses import Response, PlainTextResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 import os
+import time
+import asyncio
 import logging
 from pathlib import Path
 from typing import Optional
 
 from twilio.twiml.messaging_response import MessagingResponse
+from twilio.rest import Client as TwilioClient
 
 from bot_messages import build_reply, WELCOME_MESSAGE, SERVICES, AUDIO_HANDOFF
 
@@ -20,7 +23,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
 TWILIO_WHATSAPP_NUMBER = os.environ.get('TWILIO_WHATSAPP_NUMBER', '')
+
+# Reenganche si el cliente no responde en más de 3 horas
+REENGAGE_AFTER_SECONDS = 3 * 60 * 60
+REENGAGE_CHECK_INTERVAL = 10 * 60
+
+twilio_client = None
+if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+    twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 # Create the main app without a prefix
 app = FastAPI(title="Alfa Polarizados - Bot Andrea")
@@ -87,6 +100,10 @@ async def whatsapp_webhook(
     if ProfileName and not session.get("name"):
         session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
 
+    # El cliente respondió → actualizar actividad y limpiar bandera de reenganche
+    session["last_activity"] = time.time()
+    session["reengaged"] = False
+
     # Si el cliente envía un audio/nota de voz → remitir a la asesora
     has_media = NumMedia.isdigit() and int(NumMedia) > 0
     if has_media and MediaContentType0.startswith("audio"):
@@ -105,6 +122,48 @@ async def whatsapp_webhook(
 @api_router.get("/whatsapp/webhook")
 async def whatsapp_webhook_health():
     return PlainTextResponse("Webhook de WhatsApp de Andrea activo ✅")
+
+
+def _send_reengagement(contact: str, session: dict):
+    """Envía un mensaje proactivo para retomar la conversación (Twilio REST)."""
+    name = session.get("name", "")
+    saludo = f"¡Hola de nuevo, {name}! 👋" if name else "¡Hola de nuevo! 👋"
+    body = (
+        f"{saludo} Soy Andrea de Alfa Polarizados 🙋‍♀️. Vi que quedó pendiente nuestra "
+        "conversación. ¿Continuamos? 😊 Escribe *volver* para ver el menú o cuéntame en qué te ayudo."
+    )
+    twilio_client.messages.create(
+        from_=f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
+        to=contact,
+        body=body,
+    )
+
+
+async def _reengagement_loop():
+    """Revisa periódicamente y retoma conversaciones inactivas por más de 3 horas."""
+    while True:
+        await asyncio.sleep(REENGAGE_CHECK_INTERVAL)
+        if not twilio_client:
+            continue
+        now = time.time()
+        for contact, s in list(sessions.items()):
+            if not contact.startswith("whatsapp:"):
+                continue
+            la = s.get("last_activity")
+            if not la or s.get("reengaged") or not s.get("greeted"):
+                continue
+            if now - la > REENGAGE_AFTER_SECONDS:
+                try:
+                    _send_reengagement(contact, s)
+                    s["reengaged"] = True
+                    logger.info("Reenganche enviado a %s", contact)
+                except Exception as exc:
+                    logger.error("Error reenganchando %s: %s", contact, exc)
+
+
+@app.on_event("startup")
+async def _start_reengagement():
+    asyncio.create_task(_reengagement_loop())
 
 
 # Include the router in the main app

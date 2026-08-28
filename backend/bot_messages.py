@@ -478,12 +478,12 @@ def build_reply(incoming_text: str, session: dict):
             session["step"] = "ppf_protect"
             return [_msg(vehicle_ack(name, text) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
         if sid == "3":
-            session["step"] = None
+            session["step"] = "antiatraco_choice"
             saludo = f"¡Gracias, {name}! 🙌 Registré tu vehículo: *{text}*." if name else f"¡Gracias! 🙌 Registré tu vehículo: *{text}*."
             return [
                 _msg(saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇", media=[ANTIATRACO_IMG]),
                 _msg("▶️ *Prueba de Seguridad*", media=[ANTIATRACO_VIDEO]),
-                _msg("¿Deseas *agendar* tu instalación? Un asesor te ayudará a coordinar la cita. 😊" + AGENDAR + BACK_HINT),
+                _msg("😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT),
             ]
         if sid == "5":
             session["step"] = None
@@ -510,6 +510,14 @@ def build_reply(incoming_text: str, session: dict):
                 f"Opciones: {ejemplos}" + BACK_HINT
             )]
         return [_msg(vehicle_ack(name, combined) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
+
+    if step == "antiatraco_choice":
+        session["antiatraco_choice"] = text
+        session["step"] = None
+        return [_msg(
+            f"¡Excelente elección! 🙌 Registré tu preferencia para tu Película Antiatraco: *{text}*.\n"
+            "Un asesor de Alfa Polarizados te ayudará a coordinar la instalación." + AGENDAR + BACK_HINT
+        )]
 
     if step == "opt1_choice":
         plan = None
