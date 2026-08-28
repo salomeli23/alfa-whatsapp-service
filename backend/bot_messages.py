@@ -558,8 +558,9 @@ def build_reply(incoming_text: str, session: dict):
             return [_msg(PPF_TOTAL + AGENDAR + BACK_HINT)]
         if normalized in ("2",) or "pintura" in normalized:
             return [_msg(
-                "¡Perfecto! 🙌 Para *Pintura Completa* uno de nuestros asesores continuará "
-                "la conversación contigo para darte la cotización exacta según tu vehículo. 😊"
+                "¡Perfecto! 🙌 Para *Pintura Completa*\n\n"
+                "Uno de nuestros asesores continuará la conversación contigo para darte la "
+                "cotización exacta según tu vehículo. 😊"
                 + AGENDAR + BACK_HINT
             )]
         if normalized in ("3",) or "piano" in normalized:
