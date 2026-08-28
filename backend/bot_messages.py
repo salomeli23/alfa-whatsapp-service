@@ -137,7 +137,7 @@ PPF_ACRILICAS = (
 ANTIATRACO_IMG = "https://res.cloudinary.com/dewemwkqf/image/upload/v1785534807/planes_bjx5xb.jpg"
 ANTIATRACO_VIDEO = "https://res.cloudinary.com/dewemwkqf/video/upload/v1785534808/pruebaseguridad_qgxt4u.mp4"
 # La pregunta se envía después de que el video se cargue/vea
-ANTIATRACO_QUESTION_DELAY = 25
+ANTIATRACO_QUESTION_DELAY = 10
 
 
 # ---- Opción 5: Detailing Profesional ----

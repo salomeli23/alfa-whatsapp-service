@@ -91,14 +91,19 @@ async def whatsapp_webhook(
     ProfileName: str = Form(default=""),
     NumMedia: str = Form(default="0"),
     MediaContentType0: str = Form(default=""),
+    To: str = Form(default=""),
 ):
     """Webhook que Twilio invoca al recibir un mensaje de WhatsApp."""
-    logger.info("WhatsApp entrante de %s (%s): %s [media=%s %s]", From, ProfileName, Body, NumMedia, MediaContentType0)
+    logger.info("WhatsApp entrante de %s (%s) -> %s: %s [media=%s %s]", From, ProfileName, To, Body, NumMedia, MediaContentType0)
 
     session = sessions.setdefault(From, {})
     # Nombre automático desde el perfil de WhatsApp (nunca se pregunta)
     if ProfileName and not session.get("name"):
         session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
+
+    # Guardar el número del canal (Sandbox/aprobado) para envíos proactivos
+    if To:
+        session["channel_from"] = To
 
     # El cliente respondió → actualizar actividad, cancelar diferidos y reenganche pendientes
     session["last_activity"] = time.time()
@@ -132,13 +137,14 @@ async def whatsapp_webhook(
 
 async def _send_delayed(contact: str, messages: list, session: dict):
     """Envía mensajes diferidos (tras un retraso) por Twilio REST, si el cliente no respondió antes."""
+    sender = session.get("channel_from") or f"whatsapp:{TWILIO_WHATSAPP_NUMBER}"
     for m in messages:
         await asyncio.sleep(m.get("delay", 0))
         if not session.get("pending_delayed"):
             return  # el cliente ya escribió; se cancela el envío
         try:
             twilio_client.messages.create(
-                from_=f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
+                from_=sender,
                 to=contact,
                 body=m.get("text", ""),
                 media_url=(m.get("media") or None),
@@ -162,7 +168,7 @@ def _send_reengagement(contact: str, session: dict):
         "conversación. ¿Continuamos? 😊 Escribe *volver* para ver el menú o cuéntame en qué te ayudo."
     )
     twilio_client.messages.create(
-        from_=f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
+        from_=session.get("channel_from") or f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
         to=contact,
         body=body,
     )
