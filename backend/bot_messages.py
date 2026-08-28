@@ -136,8 +136,7 @@ PPF_ACRILICAS = (
     "✅ Película premium con 10 años de garantía\n"
     "✅ Instalación profesional.\n\n"
     "Con este servicio tu vehículo queda libre de rayones, manchas y desgaste, manteniendo ese brillo elegante por mucho más tiempo ✨.\n\n"
-    "📅 Agenda hoy mismo para asegurar precio y disponibilidad.\n\n"
-    "🤝 ¿Te reservo tu cupo para la instalación?"
+    "😊 Un asesor te confirmará el valor exacto según tu vehículo."
 )
 
 
