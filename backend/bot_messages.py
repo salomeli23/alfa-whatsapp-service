@@ -368,7 +368,7 @@ SERVICES = {
         "✅ Recubrimiento cerámico de larga duración 🛡️\n"
         "✅ Detallado profundo de interiores 🧽\n"
         "✅ Restauración de faros y plásticos 💡\n\n"
-        "💵 Desde *$180.000 COP* (según el paquete y el estado del vehículo)."
+        "💵 Desde *$700.000 COP* (según el paquete y el estado del vehículo)."
     ),
 }
 
