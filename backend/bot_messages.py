@@ -491,14 +491,6 @@ def build_reply(incoming_text: str, session: dict):
             saludo = f"¡Gracias, {name}! 🙌 Registré tu vehículo: *{text}*." if name else f"¡Gracias! 🙌 Registré tu vehículo: *{text}*."
             return [
                 _msg(saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇", media=[ANTIATRACO_IMG]),
-                _msg("▶️ *Prueba de Seguridad*", media=[ANTIATRACO_VIDEO]),
-                _msg(
-                    "😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT,
-                    delay=ANTIATRACO_QUESTION_DELAY,
-                ),
-            ] if TWILIO_PROACTIVE_ENABLED else [
-                _msg(saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇", media=[ANTIATRACO_IMG]),
-                _msg("▶️ *Prueba de Seguridad*", media=[ANTIATRACO_VIDEO]),
                 _msg("😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT),
             ]
         if sid == "5":
