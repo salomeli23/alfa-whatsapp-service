@@ -1,3 +1,11 @@
+import os
+
+# El envío proactivo/diferido por API REST requiere que la cuenta Twilio tenga
+# aprobado el perfil de cumplimiento (KYC en Trust Hub). Mientras no esté aprobado,
+# la pregunta se envía junto con el video (respuesta inmediata) para que siempre llegue.
+TWILIO_PROACTIVE_ENABLED = os.environ.get("TWILIO_PROACTIVE_ENABLED", "false").lower() == "true"
+
+
 WELCOME_MESSAGE = (
     "¡Hola! 👋 Soy Andrea 🙋‍♀️, asesora de Alfa Polarizados.\n"
     "📍 Estamos ubicados en la Cra. 49 #134A-41 – Barrio Spring, Bogotá.\n"
@@ -489,6 +497,10 @@ def build_reply(incoming_text: str, session: dict):
                     "😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT,
                     delay=ANTIATRACO_QUESTION_DELAY,
                 ),
+            ] if TWILIO_PROACTIVE_ENABLED else [
+                _msg(saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇", media=[ANTIATRACO_IMG]),
+                _msg("▶️ *Prueba de Seguridad*", media=[ANTIATRACO_VIDEO]),
+                _msg("😍 ¿Cuál opción te gusta más para tu *Película Antiatraco*? Indícame el plan que prefieres. 🚨" + BACK_HINT),
             ]
         if sid == "5":
             session["step"] = None
