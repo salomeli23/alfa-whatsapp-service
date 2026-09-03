@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, Request, Form
+from fastapi import FastAPI, APIRouter, Request, Form, Depends, HTTPException
 from fastapi.responses import Response, PlainTextResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -7,12 +7,14 @@ import time
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional
+from datetime import datetime, timezone
 
+from motor.motor_asyncio import AsyncIOMotorClient
 from twilio.twiml.messaging_response import MessagingResponse
 from twilio.rest import Client as TwilioClient
 
 from bot_messages import build_reply, WELCOME_MESSAGE, SERVICES, AUDIO_HANDOFF
+from auth import hash_password, verify_password, create_access_token, require_admin
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -26,6 +28,8 @@ logger = logging.getLogger(__name__)
 TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', '')
 TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
 TWILIO_WHATSAPP_NUMBER = os.environ.get('TWILIO_WHATSAPP_NUMBER', '')
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'alfa')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Andrea2026*')
 
 # Reenganche si el cliente no responde en más de 3 horas
 REENGAGE_AFTER_SECONDS = 3 * 60 * 60
@@ -35,16 +39,46 @@ twilio_client = None
 if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
     twilio_client = TwilioClient(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
-# Create the main app without a prefix
-app = FastAPI(title="Alfa Polarizados - Bot Andrea")
+# MongoDB
+mongo_client = AsyncIOMotorClient(os.environ['MONGO_URL'])
+db = mongo_client[os.environ['DB_NAME']]
 
-# Create a router with the /api prefix
+app = FastAPI(title="Alfa Polarizados - Bot Andrea")
 api_router = APIRouter(prefix="/api")
 
-# Estado en memoria: sesión por contacto (saludo, servicio, esperando vehículo)
+# Estado en memoria: sesión por contacto (saludo, servicio, esperando vehículo, human)
 sessions: dict[str, dict] = {}
 
 
+# ---------- Persistencia de mensajes ----------
+async def log_message(contact: str, direction: str, body: str, media=None, name=None, channel_from=None):
+    now = datetime.now(timezone.utc).isoformat()
+    await db.messages.insert_one({
+        "contact": contact,
+        "direction": direction,  # "in" | "out"
+        "body": body or "",
+        "media": media or [],
+        "timestamp": now,
+    })
+    update = {
+        "contact": contact,
+        "last_body": (body or ("📎 Multimedia" if media else "")),
+        "last_direction": direction,
+        "last_time": now,
+        "updated_at": now,
+    }
+    if name:
+        update["name"] = name
+    if channel_from:
+        update["channel_from"] = channel_from
+    await db.conversations.update_one(
+        {"contact": contact},
+        {"$set": update, "$setOnInsert": {"created_at": now, "bot_paused": False}},
+        upsert=True,
+    )
+
+
+# ---------- Endpoints públicos ----------
 @api_router.get("/")
 async def root():
     return {"message": "Bot Andrea de Alfa Polarizados está activo", "status": "ok"}
@@ -52,7 +86,6 @@ async def root():
 
 @api_router.get("/bot/info")
 async def bot_info():
-    """Datos del bot para mostrar en la landing page."""
     return {
         "name": "Andrea",
         "business": "Alfa Polarizados",
@@ -71,7 +104,6 @@ async def bot_info():
 
 @api_router.post("/bot/preview")
 async def bot_preview(payload: dict):
-    """Endpoint de prueba para simular la respuesta del bot sin usar WhatsApp."""
     message = payload.get("message", "")
     reset = payload.get("reset", False)
     contact = payload.get("contact", "preview-user")
@@ -91,27 +123,34 @@ async def whatsapp_webhook(
     ProfileName: str = Form(default=""),
     NumMedia: str = Form(default="0"),
     MediaContentType0: str = Form(default=""),
+    MediaUrl0: str = Form(default=""),
     To: str = Form(default=""),
 ):
-    """Webhook que Twilio invoca al recibir un mensaje de WhatsApp."""
     logger.info("WhatsApp entrante de %s (%s) -> %s: %s [media=%s %s]", From, ProfileName, To, Body, NumMedia, MediaContentType0)
 
     session = sessions.setdefault(From, {})
-    # Nombre automático desde el perfil de WhatsApp (nunca se pregunta)
     if ProfileName and not session.get("name"):
         session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
-
-    # Guardar el número del canal (Sandbox/aprobado) para envíos proactivos
     if To:
         session["channel_from"] = To
 
-    # El cliente respondió → actualizar actividad, cancelar diferidos y reenganche pendientes
     session["last_activity"] = time.time()
     session["reengaged"] = False
     session["pending_delayed"] = False
 
-    # Si el cliente envía un audio/nota de voz → remitir a la asesora
+    # Registrar el mensaje entrante
     has_media = NumMedia.isdigit() and int(NumMedia) > 0
+    in_media = [MediaUrl0] if (has_media and MediaUrl0) else []
+    await log_message(From, "in", Body, media=in_media, name=session.get("name"), channel_from=To)
+
+    # Si el bot está en pausa (un asesor tomó la conversación), no responder automáticamente
+    if "human" not in session:
+        conv = await db.conversations.find_one({"contact": From})
+        session["human"] = bool(conv and conv.get("bot_paused"))
+    if session.get("human"):
+        return Response(content=str(MessagingResponse()), media_type="application/xml")
+
+    # Audio → remitir a la asesora
     if has_media and MediaContentType0.startswith("audio"):
         messages = [{"text": AUDIO_HANDOFF, "media": [], "delay": 0}]
     else:
@@ -120,35 +159,32 @@ async def whatsapp_webhook(
     immediate = [m for m in messages if not m.get("delay")]
     delayed = [m for m in messages if m.get("delay")]
 
-    # Los mensajes diferidos (ej. la pregunta tras el video) se envían después vía REST
     if delayed and twilio_client and From.startswith("whatsapp:"):
         session["pending_delayed"] = True
         asyncio.create_task(_send_delayed(From, delayed, session))
     elif delayed:
-        immediate = immediate + delayed  # fallback: sin cliente REST, enviar todo junto
+        immediate = immediate + delayed
 
     twiml = MessagingResponse()
     for m in immediate:
         msg = twiml.message(m.get("text", ""))
         for url in m.get("media") or []:
             msg.media(url)
+        await log_message(From, "out", m.get("text", ""), media=m.get("media") or [])
     return Response(content=str(twiml), media_type="application/xml")
 
 
 async def _send_delayed(contact: str, messages: list, session: dict):
-    """Envía mensajes diferidos (tras un retraso) por Twilio REST, si el cliente no respondió antes."""
     sender = session.get("channel_from") or f"whatsapp:{TWILIO_WHATSAPP_NUMBER}"
     for m in messages:
         await asyncio.sleep(m.get("delay", 0))
         if not session.get("pending_delayed"):
-            return  # el cliente ya escribió; se cancela el envío
+            return
         try:
             twilio_client.messages.create(
-                from_=sender,
-                to=contact,
-                body=m.get("text", ""),
-                media_url=(m.get("media") or None),
+                from_=sender, to=contact, body=m.get("text", ""), media_url=(m.get("media") or None),
             )
+            await log_message(contact, "out", m.get("text", ""), media=m.get("media") or [])
         except Exception as exc:
             logger.error("Error enviando mensaje diferido a %s: %s", contact, exc)
     session["pending_delayed"] = False
@@ -160,7 +196,6 @@ async def whatsapp_webhook_health():
 
 
 def _send_reengagement(contact: str, session: dict):
-    """Envía un mensaje proactivo para retomar la conversación (Twilio REST)."""
     name = session.get("name", "")
     saludo = f"¡Hola de nuevo, {name}! 👋" if name else "¡Hola de nuevo! 👋"
     body = (
@@ -169,13 +204,12 @@ def _send_reengagement(contact: str, session: dict):
     )
     twilio_client.messages.create(
         from_=session.get("channel_from") or f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
-        to=contact,
-        body=body,
+        to=contact, body=body,
     )
+    return body
 
 
 async def _reengagement_loop():
-    """Revisa periódicamente y retoma conversaciones inactivas por más de 3 horas."""
     while True:
         await asyncio.sleep(REENGAGE_CHECK_INTERVAL)
         if not twilio_client:
@@ -185,23 +219,113 @@ async def _reengagement_loop():
             if not contact.startswith("whatsapp:"):
                 continue
             la = s.get("last_activity")
-            if not la or s.get("reengaged") or not s.get("greeted"):
+            if not la or s.get("reengaged") or not s.get("greeted") or s.get("human"):
                 continue
             if now - la > REENGAGE_AFTER_SECONDS:
                 try:
-                    _send_reengagement(contact, s)
+                    body = _send_reengagement(contact, s)
                     s["reengaged"] = True
+                    await log_message(contact, "out", body)
                     logger.info("Reenganche enviado a %s", contact)
                 except Exception as exc:
                     logger.error("Error reenganchando %s: %s", contact, exc)
 
 
+# ---------- Autenticación ----------
+@api_router.post("/auth/login")
+async def login(payload: dict):
+    username = (payload.get("username") or "").strip()
+    password = payload.get("password") or ""
+    user = await db.users.find_one({"username": username})
+    if not user or not verify_password(password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos")
+    token = create_access_token(username)
+    return {"token": token, "username": username}
+
+
+@api_router.get("/auth/me")
+async def me(admin: str = Depends(require_admin)):
+    return {"username": admin}
+
+
+# ---------- Panel (protegido) ----------
+@api_router.get("/admin/conversations")
+async def list_conversations(admin: str = Depends(require_admin)):
+    convs = await db.conversations.find({}, {"_id": 0}).sort("updated_at", -1).to_list(500)
+    return convs
+
+
+@api_router.get("/admin/messages")
+async def get_messages(contact: str, admin: str = Depends(require_admin)):
+    msgs = await db.messages.find({"contact": contact}, {"_id": 0}).sort("timestamp", 1).to_list(2000)
+    return msgs
+
+
+@api_router.post("/admin/reply")
+async def admin_reply(payload: dict, admin: str = Depends(require_admin)):
+    contact = payload.get("contact")
+    body = (payload.get("body") or "").strip()
+    if not contact or not body:
+        raise HTTPException(status_code=400, detail="Falta contacto o mensaje")
+    if not twilio_client:
+        raise HTTPException(status_code=503, detail="Twilio no configurado")
+
+    conv = await db.conversations.find_one({"contact": contact})
+    sender = (conv or {}).get("channel_from") or f"whatsapp:{TWILIO_WHATSAPP_NUMBER}"
+
+    try:
+        twilio_client.messages.create(from_=sender, to=contact, body=body)
+    except Exception as exc:
+        logger.error("Error enviando respuesta manual a %s: %s", contact, exc)
+        # No pausamos el bot si el envío falló, para no dejar al cliente sin respuesta
+        return {"ok": False, "error": f"Twilio no pudo enviar el mensaje: {exc}"}
+
+    # Envío exitoso → un asesor toma la conversación (bot en pausa)
+    sessions.setdefault(contact, {})["human"] = True
+    await db.conversations.update_one({"contact": contact}, {"$set": {"bot_paused": True}})
+    await log_message(contact, "out", body)
+    return {"ok": True}
+
+
+@api_router.post("/admin/toggle-bot")
+async def toggle_bot(payload: dict, admin: str = Depends(require_admin)):
+    contact = payload.get("contact")
+    paused = bool(payload.get("paused"))
+    if not contact:
+        raise HTTPException(status_code=400, detail="Falta contacto")
+    sessions.setdefault(contact, {})["human"] = paused
+    await db.conversations.update_one({"contact": contact}, {"$set": {"bot_paused": paused}}, upsert=True)
+    return {"ok": True, "bot_paused": paused}
+
+
+# ---------- Startup ----------
+async def seed_admin():
+    existing = await db.users.find_one({"username": ADMIN_USERNAME})
+    if existing is None:
+        await db.users.insert_one({
+            "username": ADMIN_USERNAME,
+            "password_hash": hash_password(ADMIN_PASSWORD),
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+        logger.info("Admin '%s' creado", ADMIN_USERNAME)
+    elif not verify_password(ADMIN_PASSWORD, existing["password_hash"]):
+        await db.users.update_one(
+            {"username": ADMIN_USERNAME},
+            {"$set": {"password_hash": hash_password(ADMIN_PASSWORD)}},
+        )
+        logger.info("Contraseña del admin '%s' actualizada", ADMIN_USERNAME)
+
+
 @app.on_event("startup")
-async def _start_reengagement():
+async def _on_startup():
+    await db.users.create_index("username", unique=True)
+    await db.conversations.create_index("contact", unique=True)
+    await db.messages.create_index("contact")
+    await seed_admin()
     asyncio.create_task(_reengagement_loop())
 
 
-# Include the router in the main app
 app.include_router(api_router)
 
 app.add_middleware(

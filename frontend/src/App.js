@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import "@/App.css";
 import axios from "axios";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Panel from "@/Panel";
 import {
   Car,
   Shield,
@@ -326,7 +328,14 @@ function Home() {
 }
 
 function App() {
-  return <Home />;
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/panel" element={<Panel />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
