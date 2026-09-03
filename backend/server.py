@@ -128,6 +128,11 @@ async def whatsapp_webhook(
 ):
     logger.info("WhatsApp entrante de %s (%s) -> %s: %s [media=%s %s]", From, ProfileName, To, Body, NumMedia, MediaContentType0)
 
+    has_media = NumMedia.isdigit() and int(NumMedia) > 0
+    # Ignorar eventos no accionables (ecos de salientes / callbacks de estado sin contenido)
+    if not From or (not (Body or "").strip() and not has_media):
+        return Response(content=str(MessagingResponse()), media_type="application/xml")
+
     session = sessions.setdefault(From, {})
     if ProfileName and not session.get("name"):
         session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
@@ -139,7 +144,6 @@ async def whatsapp_webhook(
     session["pending_delayed"] = False
 
     # Registrar el mensaje entrante
-    has_media = NumMedia.isdigit() and int(NumMedia) > 0
     in_media = [MediaUrl0] if (has_media and MediaUrl0) else []
     await log_message(From, "in", Body, media=in_media, name=session.get("name"), channel_from=To)
 

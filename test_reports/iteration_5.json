@@ -1,0 +1,37 @@
+{
+  "summary": "Validado el guard defensivo en POST /api/whatsapp/webhook: 8/8 tests PASS en /app/backend/tests/test_webhook_guard.py. Confirmado: (a) Eventos con From vacío -> TwiML <Response /> vacío sin Message y sin persistencia. (b) Eventos con Body vacío/whitespace y NumMedia=0 (ecos/status callbacks) -> TwiML vacío y NO crean ni actualizan conversación en Mongo (verificado contra /api/admin/conversations con token admin alfa/Andrea2026*). (c) Eventos con NumMedia=1 y MediaContentType0=audio/ogg Y Body vacío NO son ignorados: responden AUDIO_HANDOFF y sí registran conversación. (d) Flujo normal intacto: welcome exacto ('Soy Andrea', 'Alfa Polarizados', 'Cra. 49 #134A-41'), Body='1' -> Polarizado + marca/modelo, Body='3' + modelo -> TwiML con <Media> (imagen planes antiatraco desde cloudinary). (e) GET /api/whatsapp/webhook responde 200 con texto de salud. La suite completa /app/backend/tests corre 49/51 (los 2 fallos son pre-existentes y no relacionados al guard, ver minor).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "bot_messages.py PPF opción 2", "issue": "test_bot_andrea.py::test_ppf_2_pintura espera '$10.000.000 COP' en la respuesta pero el mensaje actual no incluye precio (dice 'un asesor te dará la cotización exacta'). Test obsoleto vs feature intencional — decidir si actualizar test o restaurar precio."},
+      {"endpoint": "POST /api/admin/reply", "issue": "test_panel_admin::test_reply_returns_502_when_twilio_rejects espera 502 pero el endpoint devuelve 200 con {ok:false, error} cuando Twilio falla (código actual: intencional para no romper el panel). Ajustar test o endpoint según decisión de producto."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_webhook_guard.py",
+    "/app/test_reports/pytest/webhook_guard_results.xml"
+  ],
+  "action_items": [
+    "NADA en código para esta iteración: el guard funciona como se especificó. El fallo real de entrega (error Twilio 63112 - Meta deshabilitó la WABA de +15553784942) es externo y NO se resuelve por código; requiere resolver el status de la WABA con Meta/Twilio.",
+    "Opcional: actualizar los 2 tests obsoletos en test_bot_andrea.py y test_panel_admin.py (ver minor issues)."
+  ],
+  "critical_code_review_comments": [
+    "Guard implementado correctamente en server.py línea 131-134: chequea From y (Body.strip() OR has_media) antes de crear session/persistir/responder — coincide con el requerimiento.",
+    "Recomendación futura (no bloqueante): también ignorar eventos donde SmsStatus/MessageStatus indique 'delivered'/'read'/'sent' explícitamente si Twilio los envía como POST al mismo webhook (actualmente Twilio los envía por statusCallback separado, por lo que este guard con Body/media es suficiente).",
+    "sessions dict en memoria sigue sin persistir (reportado en iter previas); si el proceso reinicia entre el welcome y la elección, el usuario recibirá el welcome de nuevo. Considerar guardar 'greeted/step/vehicle' en Mongo.",
+    "Webhook sigue sin validar X-Twilio-Signature (reportado en iter 3-4)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_webhook_guard.py",
+    "/app/test_reports/pytest/webhook_guard_results.xml",
+    "/app/test_reports/iteration_5.json"
+  ],
+  "success_rate": {"backend": "100% en la feature testeada (8/8 guard tests); 49/51 en la suite completa (2 fallos pre-existentes no relacionados)", "frontend": "N/A (skipped por request)"},
+  "test_credentials": "Panel admin: usuario 'alfa' / contraseña 'Andrea2026*' (seed en Mongo, presente en backend/.env).",
+  "seed_data_creation": "Cada test crea contactos únicos whatsapp:+573XX{uuid} vía POST /api/whatsapp/webhook. Contactos ignorados (Body vacío + NumMedia=0) verifican explícitamente NO estar en /api/admin/conversations.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Guard defensivo activo y testeado. Suite regresiva: pytest backend/tests/ (bajo xdist). 2 tests pre-existentes fallan por deriva del contenido/contrato — no bloqueantes. El problema real del cliente es Twilio 63112 (Meta WABA deshabilitada de +15553784942), externo al código.",
+  "rca of the issue": "El usuario reportó 'envío mensajes pero no funciona (no llega respuesta)'. Diagnóstico ya establecido por el main agent: Twilio recibe el webhook y el bot genera respuesta 200 OK con TwiML correcto, pero Twilio no puede entregar el mensaje al cliente porque Meta deshabilitó la WABA del número business +15553784942 (error 63112). Esto es un problema externo (KYC/Trust Hub/Meta), NO del código. La mejora defensiva en esta iteración (guard) evita crear conversaciones basura por eventos vacíos (ecos de salientes / status callbacks) y ya está validada con 8 tests dedicados. Mitigación: (1) resolver el status Meta/KYC de la WABA en Twilio Console/Trust Hub; (2) mientras tanto, el bot está funcional en cuanto reciba mensajes reales entrantes y podrá responder cuando la WABA sea rehabilitada."
+}

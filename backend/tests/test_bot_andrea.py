@@ -209,7 +209,8 @@ class TestOption2PPF:
         c = self._enter_ppf(client)
         msgs = _preview(client, c, "2", name="Ana")
         text = _texts(msgs)
-        assert "$10.000.000 COP" in text
+        assert "Pintura Completa" in text
+        assert "asesor" in text.lower()
 
     @pytest.mark.parametrize("vehicle,expected_name,expected_price", [
         ("Mazda CX-5", "Mazda CX-5", "$800.000"),

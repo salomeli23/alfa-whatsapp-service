@@ -128,24 +128,22 @@ class TestToggleBot:
         assert "<Message>" in r2.text
 
 
-# ---------- Admin reply (Twilio KYC blocked -> expect 502) ----------
+# ---------- Admin reply (Twilio KYC blocked -> 200 con ok:false) ----------
 class TestAdminReply:
-    def test_reply_returns_502_when_twilio_rejects(self, client, auth_headers):
+    def test_reply_returns_ok_false_when_twilio_rejects(self, client, auth_headers):
         contact = f"whatsapp:+57303{uuid.uuid4().hex[:7]}"
         client.post(f"{API}/whatsapp/webhook", data={"Body": "hola", "From": contact, "To": "whatsapp:+14155238886"}, timeout=15)
         r = client.post(f"{API}/admin/reply", headers=auth_headers, json={"contact": contact, "body": "Hola desde el panel"}, timeout=30)
-        # Twilio KYC not approved -> expected 502 (controlled), NOT 500
-        assert r.status_code == 502, f"expected 502, got {r.status_code}: {r.text}"
-        # Ingress may strip body on 502; JSON body optional
-        try:
-            assert "twilio" in r.json()["detail"].lower()
-        except Exception:
-            pass
-        # Even on failure, bot should be paused
+        # Twilio KYC no aprobado -> el endpoint responde 200 con ok:false (no crashea)
+        assert r.status_code == 200, f"expected 200, got {r.status_code}: {r.text}"
+        data = r.json()
+        assert data.get("ok") is False
+        assert "twilio" in (data.get("error") or "").lower()
+        # Si el envío falla, el bot NO debe quedar pausado (para no dejar al cliente sin respuesta)
         r2 = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
         conv = next((c for c in r2.json() if c["contact"] == contact), None)
         assert conv is not None
-        assert conv["bot_paused"] is True
+        assert conv.get("bot_paused") is not True
 
     def test_reply_missing_fields_400(self, client, auth_headers):
         r = client.post(f"{API}/admin/reply", headers=auth_headers, json={"contact": "", "body": ""}, timeout=15)
