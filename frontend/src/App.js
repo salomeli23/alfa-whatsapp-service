@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "@/App.css";
 import axios from "axios";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Panel from "@/Panel";
 import {
   Car,
@@ -14,6 +14,7 @@ import {
   RotateCcw,
   MessageCircle,
   CheckCircle2,
+  LayoutDashboard,
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -230,15 +231,20 @@ function Home() {
             <div className="brand-sub">POLARIZADOS</div>
           </div>
         </div>
-        <a
-          className="wa-cta"
-          href={`https://wa.me/${(info?.whatsapp_number || "").replace(/[^\d]/g, "")}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          data-testid="nav-whatsapp-btn"
-        >
-          <MessageCircle size={16} /> WhatsApp
-        </a>
+        <div className="flex items-center gap-3">
+          <Link className="wa-cta panel-cta" to="/panel" data-testid="nav-panel-btn">
+            <LayoutDashboard size={16} /> Panel
+          </Link>
+          <a
+            className="wa-cta"
+            href={`https://wa.me/${(info?.whatsapp_number || "").replace(/[^\d]/g, "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="nav-whatsapp-btn"
+          >
+            <MessageCircle size={16} /> WhatsApp
+          </a>
+        </div>
       </header>
 
       <section className="hero">

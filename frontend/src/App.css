@@ -111,6 +111,13 @@
   border-color: rgba(34, 227, 122, 0.4);
   transform: translateY(-1px);
 }
+.panel-cta {
+  color: #cdd4df;
+}
+.panel-cta:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
+}
 
 /* HERO */
 .hero {
