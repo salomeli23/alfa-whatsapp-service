@@ -12,9 +12,10 @@ const fs = require("fs");
 const path = require("path");
 
 const logger = pino({ level: "silent" });
-const BACKEND = process.env.BACKEND_INTERNAL_URL || "http://localhost:8001";
-const AUTH_DIR = path.join(__dirname, "auth");
-const PORT = process.env.WA_PORT || 3001;
+const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.BACKEND_URL || "http://localhost:8001";
+const AUTH_DIR = process.env.AUTH_DIR || path.join(__dirname, "auth");
+const PORT = process.env.PORT || process.env.WA_PORT || 3001;
+const WA_TOKEN = process.env.WA_TOKEN || "";
 
 let sock = null;
 let currentQR = null; // data URL
@@ -112,6 +113,14 @@ async function sendToJid(jid, text, media) {
 // ---------- API HTTP local ----------
 const app = express();
 app.use(express.json());
+
+// Protección opcional por token (obligatoria si se define WA_TOKEN)
+app.use((req, res, next) => {
+  if (WA_TOKEN && req.headers["x-wa-token"] !== WA_TOKEN) {
+    return res.status(401).json({ ok: false, error: "unauthorized" });
+  }
+  next();
+});
 
 app.get("/status", (req, res) => {
   res.json({ state: connState, qr: currentQR, me: meNumber });

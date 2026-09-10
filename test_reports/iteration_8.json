@@ -1,0 +1,24 @@
+{
+  "summary": "Re-validated Baileys env-driven config (WA_SERVICE_URL/WA_TOKEN) after refactor. Backend pytest 13/13 passing: /api/wa/status requires Bearer (401 unauth, 200 with state in {connected,qr,connecting,disconnected,offline}); /api/wa/logout Bearer proxy returns ok or 503 controlled; /api/bot/incoming welcome uses 'name' (no ask), flows opción 1/2/3 intactos, pausa toggle, persistence in conversations/messages; /api/admin/reply nunca 500 — devuelve {ok:false,error} controlado y no pausa bot en fallo. Frontend /panel login alfa/Andrea2026*: wa-status-badge renderiza correctamente (s-qr → 'Escanea el QR'); link-wa-btn abre qr-modal; qr-image visible; qr-close funciona. Offline branch verificado por revisión de código (try/except en /api/wa/status devuelve {state:'offline',qr:null,error}, no 500).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_baileys_wa.py",
+    "/app/test_reports/pytest/baileys_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py sigue con endpoint legacy Twilio /whatsapp/webhook + twilio_client + _send_delayed. Si el flujo Twilio ya no se usa, eliminar reduciría superficie (archivo 400 líneas).",
+    "wa_send crea un httpx.AsyncClient nuevo por cada llamada (bot/incoming, /wa/status, /wa/logout, admin/reply, reengage). Considerar un cliente compartido con lifetime del app para reducir overhead y respetar keep-alive.",
+    "WA_TOKEN es opcional; en producción externo debería ser obligatorio. Añadir warning en startup si WA_SERVICE_URL apunta a un host no-localhost y WA_TOKEN está vacío.",
+    "En /api/admin/reply, si wa_send retorna 200 con ok:false, no se pausa el bot (correcto). Pero si el servicio Node devuelve HTTP no-2xx, r.json() puede fallar y cae al except → 'ok:false' sin distinguir causa. Actualmente controlado (no 500), pero convendría loggear r.status_code para diagnóstico."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100%"},
+  "test_credentials": "alfa / Andrea2026*",
+  "seed_data_creation": "Nuevos contactos 5730012XXXXX creados en Mongo por los tests.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Baileys en preview está bajo supervisor en localhost:3001 y actualmente entrega state='qr' (data URL). WA_SERVICE_URL/WA_TOKEN se leen de env — no modificar /app/backend/.env. Para prod, apuntar WA_SERVICE_URL a URL pública externa (Railway/Render/VPS) con WA_TOKEN. El deploy de Emergent no ejecuta procesos Node persistentes, es esperable.",
+  "rca of the issue": "No hay bug abierto. Refactor validado: WA_SERVICE_URL/WA_TOKEN vía env + header x-wa-token; manejo controlado de fallos (offline/503/ok:false) evita 500s. Frontend refleja estado y ofrece QR/logout correctamente."
+}

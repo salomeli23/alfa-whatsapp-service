@@ -33,7 +33,14 @@ ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'alfa')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Andrea2026*')
 
 # Servicio Baileys (WhatsApp Web vía QR) — sin Twilio
+# En preview corre localmente en :3001. En PRODUCCIÓN, hospédalo externamente
+# (Railway/Render/VPS) y define WA_SERVICE_URL con esa URL pública.
 WA_SERVICE_URL = os.environ.get('WA_SERVICE_URL', 'http://localhost:3001')
+WA_TOKEN = os.environ.get('WA_TOKEN', '')
+
+
+def _wa_headers():
+    return {"x-wa-token": WA_TOKEN} if WA_TOKEN else {}
 
 # Reenganche si el cliente no responde en más de 3 horas
 REENGAGE_AFTER_SECONDS = 3 * 60 * 60
@@ -85,7 +92,7 @@ async def log_message(contact: str, direction: str, body: str, media=None, name=
 async def wa_send(to: str, text: str = "", media=None) -> dict:
     """Envía un mensaje por el servicio Baileys (WhatsApp Web)."""
     async with httpx.AsyncClient() as client:
-        r = await client.post(f"{WA_SERVICE_URL}/send", json={"to": to, "text": text, "media": media or []}, timeout=30)
+        r = await client.post(f"{WA_SERVICE_URL}/send", json={"to": to, "text": text, "media": media or []}, headers=_wa_headers(), timeout=30)
         return r.json()
 
 
@@ -128,7 +135,7 @@ async def bot_incoming(payload: dict):
 async def wa_status(admin: str = Depends(require_admin)):
     try:
         async with httpx.AsyncClient() as client:
-            r = await client.get(f"{WA_SERVICE_URL}/status", timeout=10)
+            r = await client.get(f"{WA_SERVICE_URL}/status", headers=_wa_headers(), timeout=10)
             return r.json()
     except Exception as exc:
         return {"state": "offline", "qr": None, "me": None, "error": str(exc)}
@@ -138,7 +145,7 @@ async def wa_status(admin: str = Depends(require_admin)):
 async def wa_logout(admin: str = Depends(require_admin)):
     try:
         async with httpx.AsyncClient() as client:
-            r = await client.post(f"{WA_SERVICE_URL}/logout", timeout=15)
+            r = await client.post(f"{WA_SERVICE_URL}/logout", headers=_wa_headers(), timeout=15)
             return r.json()
     except Exception as exc:
         raise HTTPException(status_code=503, detail=f"Servicio WhatsApp no disponible: {exc}")
