@@ -73,19 +73,26 @@ function QRLinkModal({ onClose }) {
     try {
       const { data } = await api.get("/wa/status");
       setStatus(data);
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      setStatus({ state: "offline", qr: null, me: null });
+    }
   }, []);
 
   useEffect(() => { load(); const i = setInterval(load, 3000); return () => clearInterval(i); }, [load]);
 
-  const logout = async () => {
+  const regenerate = async () => {
     setLoading(true);
-    try { await api.post("/wa/logout"); toast.success("Sesión cerrada, escanea el nuevo QR"); await load(); }
-    catch (e) { toast.error("No se pudo desvincular"); }
+    try {
+      await api.post("/wa/logout");
+      toast.success("Generando nuevo QR…");
+      setStatus({ state: "connecting", qr: null, me: null });
+      setTimeout(load, 3000);
+    } catch (e) { toast.error("No se pudo contactar el servicio"); }
     finally { setLoading(false); }
   };
 
   const connected = status.state === "connected";
+  const offline = status.state === "offline";
 
   return (
     <div className="qr-overlay" data-testid="qr-modal" onClick={onClose}>
@@ -98,20 +105,29 @@ function QRLinkModal({ onClose }) {
             <div className="qr-dot-ok" />
             <p>Conectado ✅</p>
             <p className="qr-num">{status.me}</p>
-            <button className="qr-logout" onClick={logout} disabled={loading} data-testid="qr-logout">
+            <button className="qr-logout" onClick={regenerate} disabled={loading} data-testid="qr-logout">
               {loading ? "…" : "Desvincular"}
             </button>
+          </div>
+        ) : offline ? (
+          <div className="qr-loading" data-testid="qr-offline">
+            <p>⚠️ No se pudo contactar el servicio de WhatsApp en este servidor.</p>
+            <button className="qr-retry" onClick={load} data-testid="qr-retry">Reintentar</button>
           </div>
         ) : status.qr ? (
           <>
             <p className="qr-help">Abre WhatsApp en tu teléfono → <b>Dispositivos vinculados</b> → <b>Vincular un dispositivo</b> y escanea:</p>
             <img src={status.qr} alt="QR de WhatsApp" className="qr-img" data-testid="qr-image" />
             <p className="qr-state">Esperando escaneo… (el QR se actualiza solo)</p>
+            <button className="qr-retry" onClick={regenerate} disabled={loading} data-testid="qr-regenerate">
+              {loading ? "…" : "Generar nuevo QR"}
+            </button>
           </>
         ) : (
           <div className="qr-loading" data-testid="qr-loading">
             <RefreshCw className="spin" size={26} />
-            <p>{status.state === "offline" ? "Servicio de WhatsApp iniciando…" : "Generando código QR…"}</p>
+            <p>Iniciando servicio de WhatsApp…</p>
+            <button className="qr-retry" onClick={load} data-testid="qr-retry2">Reintentar</button>
           </div>
         )}
       </div>
@@ -127,7 +143,26 @@ function Dashboard({ onLogout }) {
   const [query, setQuery] = useState("");
   const [sending, setSending] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [waState, setWaState] = useState({ state: "connecting", me: null });
   const scrollRef = useRef(null);
+
+  const loadWaStatus = useCallback(async () => {
+    try {
+      const { data } = await api.get("/wa/status");
+      setWaState(data);
+    } catch (e) {
+      setWaState({ state: "offline", me: null });
+    }
+  }, []);
+
+  useEffect(() => { loadWaStatus(); const i = setInterval(loadWaStatus, 8000); return () => clearInterval(i); }, [loadWaStatus]);
+
+  const waLabel =
+    waState.state === "connected" ? `Conectado · ${waState.me || ""}`
+    : waState.state === "qr" ? "Escanea el QR"
+    : waState.state === "offline" ? "Servicio no disponible"
+    : waState.state === "disconnected" ? "Desconectado"
+    : "Conectando…";
 
   const loadConvs = useCallback(async () => {
     try {
@@ -206,6 +241,14 @@ function Dashboard({ onLogout }) {
         </div>
         <button className="link-wa-btn" onClick={() => setShowQR(true)} data-testid="link-wa-btn">
           <QrCode size={15} /> Vincular WhatsApp (QR)
+        </button>
+        <button
+          className={`wa-status s-${waState.state}`}
+          onClick={() => setShowQR(true)}
+          data-testid="wa-status-badge"
+          title="Estado de conexión de WhatsApp (clic para vincular/gestionar)"
+        >
+          <span className="wa-dot" /> {waLabel}
         </button>
         <div className="search-box">
           <Search size={15} />

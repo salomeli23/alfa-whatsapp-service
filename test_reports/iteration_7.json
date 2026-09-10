@@ -1,0 +1,23 @@
+{
+  "summary": "Verified Baileys WA linking modal + persistent status badge fixes. Backend 13/13 pytest passing (wa/status auth+state, wa/logout proxy, bot/incoming flows/persistence/pausa, admin/reply controlled failure). Frontend: login alfa/Andrea2026*, wa-status-badge shows 'Escanea el QR' with class 's-qr'; link-wa-btn opens qr-modal that displays qr-image (data:image/png data URL) without getting stuck on 'iniciando'; qr-regenerate calls /api/wa/logout, shows toast 'Generando nuevo QR…' and a new QR appears; qr-close works; 73 conversations render in sidebar list.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_baileys_wa.py",
+    "/app/test_reports/pytest/baileys_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Panel.js QRLinkModal: polls /wa/status every 3s while modal is open — OK, but the two nested useEffect intervals (modal 3s + dashboard 8s) both hit backend->Baileys; consider debouncing or sharing state.",
+    "server.py still contains legacy Twilio /whatsapp/webhook path alongside new Baileys /bot/incoming; consider removing if Twilio flow is deprecated to reduce surface (395 lines total).",
+    "QRLinkModal offline branch has qr-retry (data-testid) and separate qr-retry2 in generic loading branch — testids are unique which is fine, but consider unifying UX copy."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100%"},
+  "test_credentials": "alfa / Andrea2026*",
+  "seed_data_creation": "Prev test contacts (5730012XXXXX) persist in Mongo.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Baileys service under supervisor (whatsapp) at :3001 returns state='qr' with data URL when not linked. Panel wa-status-badge reflects it as 'Escanea el QR' (class s-qr). QR modal has three explicit states: offline (qr-retry), qr (qr-image + qr-regenerate), connecting (qr-loading + qr-retry2), connected (qr-connected + qr-logout).",
+  "rca of the issue": "Original bug 'se queda en iniciando' happened when backend couldn't reach Baileys service — /wa/status raised and modal never left the loading state. Fix: server returns {state:'offline', qr:null, error} on exception; frontend renders offline branch with Reintentar. Verified with normal path (state=qr) and modal correctly shows qr-image."
+}

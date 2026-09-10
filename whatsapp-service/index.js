@@ -49,10 +49,10 @@ async function startSock() {
       connState = "disconnected";
       console.log("Conexión cerrada. code:", code);
       if (code !== DisconnectReason.loggedOut) {
-        setTimeout(startSock, 2500); // reconexión automática
+        setTimeout(startSock, 5000); // reconexión automática (con respiro)
       } else {
         try { fs.rmSync(AUTH_DIR, { recursive: true, force: true }); } catch (e) {}
-        setTimeout(startSock, 1500); // nueva sesión → nuevo QR
+        setTimeout(startSock, 2000); // nueva sesión → nuevo QR
       }
     }
   });
