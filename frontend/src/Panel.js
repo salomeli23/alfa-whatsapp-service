@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import axios from "axios";
 import { toast, Toaster } from "sonner";
 import {
-  MessageCircle, Send, LogOut, Search, Bot, User, RefreshCw, Pause, Play, Lock,
+  MessageCircle, Send, LogOut, Search, Bot, User, RefreshCw, Pause, Play, Lock, QrCode, X,
 } from "lucide-react";
 import "@/Panel.css";
 
@@ -62,7 +62,61 @@ function Login({ onLogin }) {
 }
 
 function displayName(c) {
-  return c.name || (c.contact || "").replace("whatsapp:", "");
+  return c.name || (c.contact || "").replace("whatsapp:", "").replace("@s.whatsapp.net", "").replace("@c.us", "");
+}
+
+function QRLinkModal({ onClose }) {
+  const [status, setStatus] = useState({ state: "connecting", qr: null, me: null });
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const { data } = await api.get("/wa/status");
+      setStatus(data);
+    } catch (e) { /* ignore */ }
+  }, []);
+
+  useEffect(() => { load(); const i = setInterval(load, 3000); return () => clearInterval(i); }, [load]);
+
+  const logout = async () => {
+    setLoading(true);
+    try { await api.post("/wa/logout"); toast.success("Sesión cerrada, escanea el nuevo QR"); await load(); }
+    catch (e) { toast.error("No se pudo desvincular"); }
+    finally { setLoading(false); }
+  };
+
+  const connected = status.state === "connected";
+
+  return (
+    <div className="qr-overlay" data-testid="qr-modal" onClick={onClose}>
+      <div className="qr-card" onClick={(e) => e.stopPropagation()}>
+        <button className="qr-close" onClick={onClose} data-testid="qr-close"><X size={18} /></button>
+        <h2 className="qr-title"><QrCode size={20} /> Vincular WhatsApp</h2>
+
+        {connected ? (
+          <div className="qr-connected" data-testid="qr-connected">
+            <div className="qr-dot-ok" />
+            <p>Conectado ✅</p>
+            <p className="qr-num">{status.me}</p>
+            <button className="qr-logout" onClick={logout} disabled={loading} data-testid="qr-logout">
+              {loading ? "…" : "Desvincular"}
+            </button>
+          </div>
+        ) : status.qr ? (
+          <>
+            <p className="qr-help">Abre WhatsApp en tu teléfono → <b>Dispositivos vinculados</b> → <b>Vincular un dispositivo</b> y escanea:</p>
+            <img src={status.qr} alt="QR de WhatsApp" className="qr-img" data-testid="qr-image" />
+            <p className="qr-state">Esperando escaneo… (el QR se actualiza solo)</p>
+          </>
+        ) : (
+          <div className="qr-loading" data-testid="qr-loading">
+            <RefreshCw className="spin" size={26} />
+            <p>{status.state === "offline" ? "Servicio de WhatsApp iniciando…" : "Generando código QR…"}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function Dashboard({ onLogout }) {
@@ -72,6 +126,7 @@ function Dashboard({ onLogout }) {
   const [reply, setReply] = useState("");
   const [query, setQuery] = useState("");
   const [sending, setSending] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const scrollRef = useRef(null);
 
   const loadConvs = useCallback(async () => {
@@ -144,8 +199,14 @@ function Dashboard({ onLogout }) {
       <aside className="sidebar">
         <div className="side-head">
           <div className="brand"><span className="brand-mark sm">α</span><span className="side-title">Andrea · Chats</span></div>
-          <button className="icon-btn" onClick={onLogout} title="Salir" data-testid="logout-btn"><LogOut size={16} /></button>
+          <div className="flex items-center gap-1">
+            <button className="icon-btn" onClick={() => setShowQR(true)} title="Vincular WhatsApp (QR)" data-testid="open-qr-btn"><QrCode size={16} /></button>
+            <button className="icon-btn" onClick={onLogout} title="Salir" data-testid="logout-btn"><LogOut size={16} /></button>
+          </div>
         </div>
+        <button className="link-wa-btn" onClick={() => setShowQR(true)} data-testid="link-wa-btn">
+          <QrCode size={15} /> Vincular WhatsApp (QR)
+        </button>
         <div className="search-box">
           <Search size={15} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente…" data-testid="search-input" />
@@ -215,6 +276,7 @@ function Dashboard({ onLogout }) {
         )}
       </main>
       <Toaster position="top-right" richColors />
+      {showQR && <QRLinkModal onClose={() => setShowQR(false)} />}
     </div>
   );
 }

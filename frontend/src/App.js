@@ -15,6 +15,7 @@ import {
   MessageCircle,
   CheckCircle2,
   LayoutDashboard,
+  QrCode,
 } from "lucide-react";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -232,6 +233,9 @@ function Home() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <Link className="wa-cta panel-cta" to="/panel" data-testid="nav-qr-btn">
+            <QrCode size={16} /> QR
+          </Link>
           <Link className="wa-cta panel-cta" to="/panel" data-testid="nav-panel-btn">
             <LayoutDashboard size={16} /> Panel
           </Link>

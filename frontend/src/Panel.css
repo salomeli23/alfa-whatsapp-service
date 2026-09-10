@@ -109,3 +109,28 @@
 @media (max-width: 720px) {
   .sidebar { width: 100%; position: absolute; z-index: 5; height: 100%; }
 }
+
+/* Botón vincular + QR modal */
+.link-wa-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 0 12px 8px; padding: 10px; border-radius: 10px; cursor: pointer;
+  background: rgba(34, 227, 122, 0.12); border: 1px solid rgba(34, 227, 122, 0.35);
+  color: #bfead2; font-size: 0.85rem; font-weight: 500; transition: background-color 0.2s;
+}
+.link-wa-btn:hover { background: rgba(34, 227, 122, 0.2); }
+
+.qr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: grid; place-items: center; z-index: 50; padding: 20px; backdrop-filter: blur(4px); }
+.qr-card { position: relative; width: 100%; max-width: 380px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 28px; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+.qr-close { position: absolute; top: 14px; right: 14px; background: transparent; border: none; color: #8696a0; cursor: pointer; }
+.qr-close:hover { color: #fff; }
+.qr-title { display: flex; align-items: center; justify-content: center; gap: 8px; color: #fff; font-family: "Sora", sans-serif; font-weight: 700; font-size: 1.15rem; margin: 0 0 16px; }
+.qr-help { color: #aab2c0; font-size: 0.85rem; line-height: 1.5; margin: 0 0 14px; }
+.qr-img { width: 240px; height: 240px; border-radius: 12px; background: #fff; padding: 8px; display: block; margin: 0 auto; }
+.qr-state { color: #8696a0; font-size: 0.8rem; margin: 14px 0 0; }
+.qr-loading, .qr-connected { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 0; color: #cdd4df; }
+.qr-num { color: var(--accent); font-weight: 600; }
+.qr-dot-ok { width: 46px; height: 46px; border-radius: 50%; background: rgba(34,227,122,0.15); border: 2px solid var(--accent); display: grid; place-items: center; }
+.qr-logout { margin-top: 8px; padding: 10px 22px; border-radius: 999px; border: 1px solid rgba(255,120,120,0.4); background: rgba(255,80,80,0.12); color: #ff9b9b; cursor: pointer; font-weight: 600; }
+.qr-logout:hover { background: rgba(255,80,80,0.2); }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

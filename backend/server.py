@@ -6,6 +6,7 @@ import os
 import time
 import asyncio
 import logging
+import httpx
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -30,6 +31,9 @@ TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', '')
 TWILIO_WHATSAPP_NUMBER = os.environ.get('TWILIO_WHATSAPP_NUMBER', '')
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'alfa')
 ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'Andrea2026*')
+
+# Servicio Baileys (WhatsApp Web vía QR) — sin Twilio
+WA_SERVICE_URL = os.environ.get('WA_SERVICE_URL', 'http://localhost:3001')
 
 # Reenganche si el cliente no responde en más de 3 horas
 REENGAGE_AFTER_SECONDS = 3 * 60 * 60
@@ -76,6 +80,68 @@ async def log_message(contact: str, direction: str, body: str, media=None, name=
         {"$set": update, "$setOnInsert": {"created_at": now, "bot_paused": False}},
         upsert=True,
     )
+
+
+async def wa_send(to: str, text: str = "", media=None) -> dict:
+    """Envía un mensaje por el servicio Baileys (WhatsApp Web)."""
+    async with httpx.AsyncClient() as client:
+        r = await client.post(f"{WA_SERVICE_URL}/send", json={"to": to, "text": text, "media": media or []}, timeout=30)
+        return r.json()
+
+
+@api_router.post("/bot/incoming")
+async def bot_incoming(payload: dict):
+    """Recibe un mensaje entrante desde el servicio Baileys, aplica la lógica del bot y persiste."""
+    contact = payload.get("contact")
+    name = payload.get("name")
+    text = payload.get("text", "")
+    is_audio = payload.get("is_audio", False)
+    if not contact:
+        return {"paused": False, "messages": []}
+
+    session = sessions.setdefault(contact, {})
+    if name and not session.get("name"):
+        session["name"] = name.split()[0] if name.split() else name
+    session["last_activity"] = time.time()
+    session["reengaged"] = False
+
+    await log_message(contact, "in", text, name=session.get("name"))
+
+    # Respetar pausa (control humano desde el panel)
+    if "human" not in session:
+        conv = await db.conversations.find_one({"contact": contact})
+        session["human"] = bool(conv and conv.get("bot_paused"))
+    if session.get("human"):
+        return {"paused": True, "messages": []}
+
+    if is_audio:
+        messages = [{"text": AUDIO_HANDOFF, "media": [], "delay": 0}]
+    else:
+        messages = build_reply(text, session)
+
+    for m in messages:
+        await log_message(contact, "out", m.get("text", ""), media=m.get("media") or [])
+    return {"paused": False, "messages": messages}
+
+
+@api_router.get("/wa/status")
+async def wa_status(admin: str = Depends(require_admin)):
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"{WA_SERVICE_URL}/status", timeout=10)
+            return r.json()
+    except Exception as exc:
+        return {"state": "offline", "qr": None, "me": None, "error": str(exc)}
+
+
+@api_router.post("/wa/logout")
+async def wa_logout(admin: str = Depends(require_admin)):
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(f"{WA_SERVICE_URL}/logout", timeout=15)
+            return r.json()
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=f"Servicio WhatsApp no disponible: {exc}")
 
 
 # ---------- Endpoints públicos ----------
@@ -199,35 +265,25 @@ async def whatsapp_webhook_health():
     return PlainTextResponse("Webhook de WhatsApp de Andrea activo ✅")
 
 
-def _send_reengagement(contact: str, session: dict):
-    name = session.get("name", "")
-    saludo = f"¡Hola de nuevo, {name}! 👋" if name else "¡Hola de nuevo! 👋"
-    body = (
-        f"{saludo} Soy Andrea de Alfa Polarizados 🙋‍♀️. Vi que quedó pendiente nuestra "
-        "conversación. ¿Continuamos? 😊 Escribe *volver* para ver el menú o cuéntame en qué te ayudo."
-    )
-    twilio_client.messages.create(
-        from_=session.get("channel_from") or f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
-        to=contact, body=body,
-    )
-    return body
-
-
 async def _reengagement_loop():
     while True:
         await asyncio.sleep(REENGAGE_CHECK_INTERVAL)
-        if not twilio_client:
-            continue
         now = time.time()
         for contact, s in list(sessions.items()):
-            if not contact.startswith("whatsapp:"):
+            if contact.startswith("preview-"):
                 continue
             la = s.get("last_activity")
             if not la or s.get("reengaged") or not s.get("greeted") or s.get("human"):
                 continue
             if now - la > REENGAGE_AFTER_SECONDS:
+                name = s.get("name", "")
+                saludo = f"¡Hola de nuevo, {name}! 👋" if name else "¡Hola de nuevo! 👋"
+                body = (
+                    f"{saludo} Soy Andrea de Alfa Polarizados 🙋‍♀️. Vi que quedó pendiente nuestra "
+                    "conversación. ¿Continuamos? 😊 Escribe *volver* para ver el menú o cuéntame en qué te ayudo."
+                )
                 try:
-                    body = _send_reengagement(contact, s)
+                    await wa_send(contact, body)
                     s["reengaged"] = True
                     await log_message(contact, "out", body)
                     logger.info("Reenganche enviado a %s", contact)
@@ -271,18 +327,15 @@ async def admin_reply(payload: dict, admin: str = Depends(require_admin)):
     body = (payload.get("body") or "").strip()
     if not contact or not body:
         raise HTTPException(status_code=400, detail="Falta contacto o mensaje")
-    if not twilio_client:
-        raise HTTPException(status_code=503, detail="Twilio no configurado")
-
-    conv = await db.conversations.find_one({"contact": contact})
-    sender = (conv or {}).get("channel_from") or f"whatsapp:{TWILIO_WHATSAPP_NUMBER}"
 
     try:
-        twilio_client.messages.create(from_=sender, to=contact, body=body)
+        result = await wa_send(contact, body)
     except Exception as exc:
         logger.error("Error enviando respuesta manual a %s: %s", contact, exc)
-        # No pausamos el bot si el envío falló, para no dejar al cliente sin respuesta
-        return {"ok": False, "error": f"Twilio no pudo enviar el mensaje: {exc}"}
+        return {"ok": False, "error": f"No se pudo enviar (WhatsApp no vinculado): {exc}"}
+
+    if not result.get("ok"):
+        return {"ok": False, "error": result.get("error") or "No se pudo enviar el mensaje"}
 
     # Envío exitoso → un asesor toma la conversación (bot en pausa)
     sessions.setdefault(contact, {})["human"] = True
