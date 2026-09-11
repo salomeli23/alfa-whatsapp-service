@@ -1,0 +1,23 @@
+{
+  "summary": "Regression check after Baileys 6.7.18 -> 6.7.22 bump and Dockerfile (git+ca-certificates) change. Backend 13/13 pytest passing: /api/wa/status (401 sin Bearer, 200 con state qr|connected|connecting|disconnected|offline + qr data URL), /api/wa/logout (401 sin auth, 200 ok:true o 503 controlado), /api/bot/incoming (welcome usa 'name' sin preguntar, opcion 1 saluda por nombre y pide marca/modelo, opcion 3 devuelve media antiatraco tras modelo, opcion 2 PPF submenu con Piano Black + Protección Total + Pintura Completa, sin contacto -> lista vacía), persistencia en /api/admin/conversations y /api/admin/messages (in/out), pausa via /api/admin/toggle-bot funciona en ambos sentidos, /api/admin/reply nunca 500 (200 ok:false controlado sin pausar bot; 400 en campos vacíos). Frontend /panel (alfa/Andrea2026*): wa-status-badge='Escanea el QR', link-wa-btn abre qr-modal con qr-image visible, qr-close funciona. El bump de Baileys no introduce regresiones. Dockerfile no aplica en preview (Railway únicamente).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_baileys_wa.py",
+    "/app/test_reports/pytest/baileys_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "whatsapp-service/Dockerfile depende de git para instalar deps de Baileys; verificar en Railway que el layer de apt-get install queda cacheado y no crece el image size innecesariamente (usar --no-install-recommends está bien).",
+    "Baileys 6.7.22 sigue siendo pre-release; monitorear changelog para breaking changes en creds/store entre patch versions.",
+    "wa_send crea httpx.AsyncClient nuevo por request — recomendación previa aún pendiente (cliente compartido)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "100%"},
+  "test_credentials": "alfa / Andrea2026*",
+  "seed_data_creation": "Contactos únicos 5730012XXXXX generados por los tests (persisten en Mongo pero no interfieren).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Baileys en preview corre en localhost:3001 vía supervisor con state='qr'. WA_SERVICE_URL/WA_TOKEN en backend/.env — no modificar. El Dockerfile de whatsapp-service se usa sólo en Railway; su validación en preview no es factible (no build container). Bump Baileys 6.7.22 sin regresiones observables.",
+  "rca of the issue": "No hay bug. Bump de dependencia validado; contratos de API y flujos conversacionales intactos."
+}
