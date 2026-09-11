@@ -12,7 +12,11 @@ const fs = require("fs");
 const path = require("path");
 
 const logger = pino({ level: "silent" });
-const BACKEND = process.env.BACKEND_INTERNAL_URL || process.env.BACKEND_URL || "http://localhost:8001";
+let rawBackend = process.env.BACKEND_URL || process.env.BACKEND_INTERNAL_URL || "https://alfapolarizados.online";
+if (rawBackend.startsWith("VALUE") || rawBackend.includes("${{") || (rawBackend.includes("localhost") && !process.env.BACKEND_INTERNAL_URL)) {
+  rawBackend = "https://alfapolarizados.online";
+}
+const BACKEND = rawBackend.replace(/\/panel\/?$/i, "").replace(/\/+$/, "");
 const AUTH_DIR = process.env.AUTH_DIR || path.join(__dirname, "auth");
 const PORT = process.env.PORT || process.env.WA_PORT || 3001;
 const WA_TOKEN = process.env.WA_TOKEN || "";
@@ -79,18 +83,24 @@ async function startSock() {
         const pushName = msg.pushName || "";
         const contact = jidToContact(jid);
 
+        console.log(`[WA] Mensaje entrante de ${contact} (${pushName}): "${(text || (isAudio ? '[Audio]' : '')).slice(0, 60)}"`);
         const { data } = await axios.post(`${BACKEND}/api/bot/incoming`, {
           contact, name: pushName, text, is_audio: isAudio,
         }, { timeout: 20000 });
 
-        if (data.paused) continue;
-        for (const mm of data.messages || []) {
+        if (data.paused) {
+          console.log(`[WA] Conversación con ${contact} está en pausa por asesor`);
+          continue;
+        }
+        const replyMsgs = data.messages || [];
+        console.log(`[WA] Andrea generó ${replyMsgs.length} mensaje(s) de respuesta para ${contact}`);
+        for (const mm of replyMsgs) {
           if (mm.delay) await new Promise((r) => setTimeout(r, mm.delay * 1000));
           await sendToJid(jid, mm.text || "", mm.media || []);
           await new Promise((r) => setTimeout(r, 400)); // pequeño respiro entre mensajes
         }
       } catch (e) {
-        console.error("Error procesando mensaje:", e.message);
+        console.error(`[WA] Error enviando a ${BACKEND}/api/bot/incoming:`, e.message);
       }
     }
   });
@@ -147,5 +157,5 @@ app.post("/logout", async (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => console.log(`WA service en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`WA service en puerto ${PORT} -> Backend conectado a: ${BACKEND}`));
 startSock();

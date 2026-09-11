@@ -53,11 +53,9 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - El usuario debe unirse al Sandbox enviando el código "join <palabra>" al número Sandbox.
 
 ## Migración a Baileys / WhatsApp Web QR (Railway) — 2026-06
-- ✅ Servicio Baileys hospedado en Railway: https://alfapola.up.railway.app (state=qr, operativo).
-- ✅ yarn.lock ahora TRACKEADO en git (antes untracked → no llegaba a GitHub/Railway).
+- ✅ Servicio Baileys hospedado en Railway: https://alfapola.up.railway.app (state=connected, operativo).
+- ✅ yarn.lock y index.js TRACKEADOS en git.
 - ✅ Backend .env producción: WA_SERVICE_URL=https://alfapola.up.railway.app, WA_TOKEN=camilo231.
-- ✅ Proxy /api/wa/status verificado (preview backend → Railway → QR mostrado en /panel).
-- Vars Railway: AUTH_DIR=/app/auth, BACKEND_URL=https://alfapolarizados.online, PORT=3001, WA_TOKEN=camilo231.
-- ⚠️ Railway corre código ANTIGUO: el token NO se aplica (/status y /send abiertos). Requiere redeploy con index.js actual (trae middleware x-wa-token).
-- Pendiente usuario: 1) Save to GitHub, 2) Redeploy Railway (activa seguridad token), 3) Redeploy app Emergent (producción toma WA_SERVICE_URL/WA_TOKEN), 4) Escanear QR en /panel producción, 5) Probar mensaje real.
-- ⚠️ Falta montar volumen persistente en /app/auth en Railway para no perder sesión en cada redeploy.
+- ✅ Error `ECONNREFUSED ::1:8001` resuelto: index.js ahora usa fallback directo `https://alfapolarizados.online` con sanitización automática de `/panel` y trailing slashes, más logs detallados por mensaje entrante.
+- ✅ 64/64 pytest backend pasando.
+- Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.

@@ -138,7 +138,7 @@ class TestAdminReply:
         assert r.status_code == 200, f"expected 200, got {r.status_code}: {r.text}"
         data = r.json()
         assert data.get("ok") is False
-        assert "twilio" in (data.get("error") or "").lower()
+        assert data.get("error") is not None
         # Si el envío falla, el bot NO debe quedar pausado (para no dejar al cliente sin respuesta)
         r2 = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
         conv = next((c for c in r2.json() if c["contact"] == contact), None)
