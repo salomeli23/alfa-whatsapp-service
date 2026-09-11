@@ -51,3 +51,13 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - En Twilio Console → Messaging → WhatsApp Sandbox, configurar "When a message comes in"
   a: https://andrea-polarizados.preview.emergentagent.com/api/whatsapp/webhook (POST).
 - El usuario debe unirse al Sandbox enviando el código "join <palabra>" al número Sandbox.
+
+## Migración a Baileys / WhatsApp Web QR (Railway) — 2026-06
+- ✅ Servicio Baileys hospedado en Railway: https://alfapola.up.railway.app (state=qr, operativo).
+- ✅ yarn.lock ahora TRACKEADO en git (antes untracked → no llegaba a GitHub/Railway).
+- ✅ Backend .env producción: WA_SERVICE_URL=https://alfapola.up.railway.app, WA_TOKEN=camilo231.
+- ✅ Proxy /api/wa/status verificado (preview backend → Railway → QR mostrado en /panel).
+- Vars Railway: AUTH_DIR=/app/auth, BACKEND_URL=https://alfapolarizados.online, PORT=3001, WA_TOKEN=camilo231.
+- ⚠️ Railway corre código ANTIGUO: el token NO se aplica (/status y /send abiertos). Requiere redeploy con index.js actual (trae middleware x-wa-token).
+- Pendiente usuario: 1) Save to GitHub, 2) Redeploy Railway (activa seguridad token), 3) Redeploy app Emergent (producción toma WA_SERVICE_URL/WA_TOKEN), 4) Escanear QR en /panel producción, 5) Probar mensaje real.
+- ⚠️ Falta montar volumen persistente en /app/auth en Railway para no perder sesión en cada redeploy.
