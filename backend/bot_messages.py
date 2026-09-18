@@ -307,9 +307,8 @@ def arch_ack(name: str, city: str, location: str, measures: str) -> str:
 
 
 AUDIO_HANDOFF = (
-    "🎧 Recibí tu mensaje de voz. Para darte la mejor atención, te comunico con una de "
-    "nuestras asesoras 🙋‍♀️, quien continuará la conversación contigo en breve. 😊\n"
-    "Mientras tanto, también puedes escribirme tu consulta por texto. 💬"
+    "🎧 ¡Recibí tu mensaje de voz! Para darte la mejor atención, en este momento una de "
+    "nuestras asesoras 🙋‍♀️ continuará la conversación contigo de forma personalizada. 😊"
 )
 
 

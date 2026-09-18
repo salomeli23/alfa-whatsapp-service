@@ -63,6 +63,8 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - ✅ Opción 4 (Arquitectónico): tras enviar medidas, muestra resumen + "una asesora preparará tu cotización" y el bot se PAUSA igual que opción 3. Test: TestArchHandoff. 66/66 pytest OK.
 - ✅ Opción 1: eliminado video "Prueba de seguridad" (quedan 2: instalación + visibilidad). Tras elegir plan y responder cuándo agendar → handoff a asesora + pausa del bot (nuevo step handoff_agendar).
 - ✅ Opción 2 (PPF): eliminada la aclaración de marca ambigua — cualquier marca/modelo continúa el flujo al submenú. Tras cualquier sub-opción (Total, Pintura, Piano Black, Acrílicas) y responder cuándo agendar → handoff a asesora + pausa. Tests: TestScheduleHandoff (3 nuevos). 69/69 pytest OK.
+- ✅ Continuidad garantizada con audio: si el cliente responde con nota de voz en CUALQUIER punto, Andrea pasa a asesora y pausa el bot (session["request_human"] en rama is_audio de bot_incoming). Mensaje AUDIO_HANDOFF actualizado. Test: TestAudioHandoff. 70/70 pytest OK.
+- Nota continuidad de texto: los cortes vistos en capturas (ej. responder "1" y no recibir respuesta) son por el socket duplicado de Railway (código viejo). El fix ya está en index.js; requiere redeploy de Railway.
 - ⚠️ Menú duplicado: causado por doble procesamiento de sockets Baileys (fix ya en index.js). Requiere Save to GitHub + redeploy Railway para aplicarse en producción.
 - ✅ 64/64 pytest backend pasando.
 - Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.

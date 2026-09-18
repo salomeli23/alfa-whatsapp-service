@@ -209,6 +209,28 @@ class TestPauseIncoming:
         assert len(r2.json()["messages"]) >= 1
 
 
+# ---------- Continuidad con audio (siempre pasa a asesora) ----------
+class TestAudioHandoff:
+    def test_audio_pauses_bot_mid_flow(self, client, auth_headers):
+        c = _unique_contact()
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Pedro", "text": "hola"}, timeout=15)
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Pedro", "text": "1"}, timeout=15)
+        # Cliente responde con AUDIO en medio del flujo -> handoff + pausa
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Pedro", "text": "", "is_audio": True}, timeout=15)
+        assert r.status_code == 200
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower() or "voz" in text.lower()
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Pedro", "text": "hola"}, timeout=15)
+        assert r2.json()["paused"] is True and r2.json()["messages"] == []
+
+
 # ---------- Handoff automático tras agendar (Opciones 1 y 2) ----------
 class TestScheduleHandoff:
     def test_opt1_schedule_pauses_bot(self, client, auth_headers):

@@ -123,6 +123,7 @@ async def bot_incoming(payload: dict):
 
     if is_audio:
         messages = [{"text": AUDIO_HANDOFF, "media": [], "delay": 0}]
+        session["request_human"] = True  # audio → siempre pasa a asesora (continuidad garantizada)
     else:
         messages = build_reply(text, session)
 
