@@ -126,6 +126,13 @@ async def bot_incoming(payload: dict):
     else:
         messages = build_reply(text, session)
 
+    # Handoff automático: el flujo pidió pasar a asesora humana → pausar el bot
+    if session.pop("request_human", None):
+        session["human"] = True
+        await db.conversations.update_one(
+            {"contact": contact}, {"$set": {"bot_paused": True}}, upsert=True
+        )
+
     for m in messages:
         await log_message(contact, "out", m.get("text", ""), media=m.get("media") or [])
     return {"paused": False, "messages": messages}

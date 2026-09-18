@@ -209,6 +209,34 @@ class TestPauseIncoming:
         assert len(r2.json()["messages"]) >= 1
 
 
+# ---------- Handoff automático (Opción 3) ----------
+class TestAntiatracoHandoff:
+    def test_antiatraco_preference_pauses_bot(self, client, auth_headers):
+        c = _unique_contact()
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Sofia", "text": "hola"}, timeout=15)
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Sofia", "text": "3"}, timeout=15)
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Sofia", "text": "Renault Duster"}, timeout=15)
+        # Preferencia -> mensaje de asesora + pausa del bot
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Sofia", "text": "Cerámico"}, timeout=15)
+        assert r.status_code == 200
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower()
+        # bot_paused en DB
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None
+        assert conv.get("bot_paused") is True
+        # Siguiente mensaje -> pausado, sin respuesta automática
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Sofia", "text": "hola?"}, timeout=15)
+        assert r2.json()["paused"] is True
+        assert r2.json()["messages"] == []
+
+
 # ---------- /api/admin/reply (Baileys no vinculado) ----------
 class TestAdminReplyBaileys:
     def test_reply_controlled_when_not_linked(self, client, auth_headers):

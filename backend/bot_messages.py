@@ -525,9 +525,11 @@ def build_reply(incoming_text: str, session: dict):
     if step == "antiatraco_choice":
         session["antiatraco_choice"] = text
         session["step"] = None
+        session["request_human"] = True
         return [_msg(
-            f"¡Excelente elección! 🙌 Registré tu preferencia para tu Película Antiatraco: *{text}*.\n"
-            "Un asesor de Alfa Polarizados te ayudará a coordinar la instalación." + AGENDAR + BACK_HINT
+            f"¡Excelente elección! 🙌 Registré tu preferencia para tu Película Antiatraco: *{text}*.\n\n"
+            "👩‍💼 En este momento una de nuestras asesoras continuará tu atención de forma "
+            "personalizada para confirmar los detalles y agendar tu cita. 😊"
         )]
 
     if step == "opt1_choice":
