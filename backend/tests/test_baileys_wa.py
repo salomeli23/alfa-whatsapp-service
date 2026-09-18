@@ -209,6 +209,35 @@ class TestPauseIncoming:
         assert len(r2.json()["messages"]) >= 1
 
 
+# ---------- Fallback amable (nunca "No entendí") ----------
+class TestKindFallback:
+    def test_fallback_is_kind_not_confused(self, client):
+        c = _unique_contact()
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Rosa", "text": "hola"}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": "xyzabc"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "no entendí" not in text.lower()
+        assert "😊" in text or "gusto" in text.lower()
+        # sigue ofreciendo las opciones (continuidad)
+        assert "opciones" in text.lower() or "servicio" in text.lower()
+
+    def test_detailing_schedule_pauses_bot(self, client, auth_headers):
+        c = _unique_contact()
+        for txt in ["hola", "5", "Renault Duster"]:
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": txt}, timeout=15)
+        # Cualquier respuesta ("Ok") -> asesora + pausa
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": "Ok"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower()
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+
+
 # ---------- Continuidad con audio (siempre pasa a asesora) ----------
 class TestAudioHandoff:
     def test_audio_pauses_bot_mid_flow(self, client, auth_headers):

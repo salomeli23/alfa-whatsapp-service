@@ -33,7 +33,7 @@ SCHEDULE_HANDOFF = (
 )
 
 INVALID_PREFIX = (
-    "No entendí tu mensaje 🤔. Con gusto te ayudo, elige una de nuestras opciones 👇\n\n"
+    "¡Gracias por tu mensaje! 😊 Con gusto te ayudo. Estas son nuestras opciones 👇\n\n"
 )
 
 VEHICLE_PROMPT = (
@@ -489,7 +489,7 @@ def build_reply(incoming_text: str, session: dict):
                 ),
             ]
         if sid == "5":
-            session["step"] = None
+            session["step"] = "handoff_agendar"
             return [
                 _msg(DETAILING_LIST),
                 _msg("Un asesor te ayudará a coordinar tu cita. 😊" + BACK_HINT),
