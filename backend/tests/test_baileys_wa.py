@@ -308,6 +308,19 @@ class TestScheduleHandoff:
                          json={"contact": c, "name": "Luis", "text": "?"}, timeout=15)
         assert r2.json()["paused"] is True and r2.json()["messages"] == []
 
+    def test_affirmation_not_quoted(self, client):
+        # "Si" / "Claro" no deben citarse como "Tomé nota: Si"
+        for word in ["Si", "Claro"]:
+            c = _unique_contact()
+            for txt in ["hola", "1", "Mazda 3", "cerámico"]:
+                client.post(f"{API}/bot/incoming",
+                            json={"contact": c, "name": "Ana", "text": txt}, timeout=15)
+            r = client.post(f"{API}/bot/incoming",
+                            json={"contact": c, "name": "Ana", "text": word}, timeout=15)
+            text = "\n".join(m["text"] for m in r.json()["messages"])
+            assert "Tomé nota" not in text, f"'{word}' no debe citarse como nota"
+            assert "asesora" in text.lower()
+
 
 # ---------- Handoff automático (Opción 3) ----------
 class TestAntiatracoHandoff:

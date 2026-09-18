@@ -32,6 +32,13 @@ SCHEDULE_HANDOFF = (
     "personalizada para confirmar tu cita. 😊"
 )
 
+# Respuestas afirmativas cortas: no se citan con "Tomé nota"
+AFFIRMATIONS = {
+    "si", "sí", "sip", "sipo", "sep", "claro", "claro que si", "claro que sí",
+    "ok", "okay", "okey", "dale", "bueno", "listo", "vale", "perfecto",
+    "por supuesto", "de una", "seguro", "obvio", "yes", "va", "genial", "buenisimo",
+}
+
 INVALID_PREFIX = (
     "¡Gracias por tu mensaje! 😊 Con gusto te ayudo. Estas son nuestras opciones 👇\n\n"
 )
@@ -501,6 +508,8 @@ def build_reply(incoming_text: str, session: dict):
         session["schedule_pref"] = text
         session["step"] = None
         session["request_human"] = True
+        if normalized in AFFIRMATIONS:
+            return [_msg("¡Perfecto! 🙌" + SCHEDULE_HANDOFF)]
         nota = f" Tomé nota: *{text}*." if text else ""
         return [_msg(f"¡Perfecto! 🙌{nota}" + SCHEDULE_HANDOFF)]
 
