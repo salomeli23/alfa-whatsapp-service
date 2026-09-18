@@ -237,6 +237,28 @@ class TestAntiatracoHandoff:
         assert r2.json()["messages"] == []
 
 
+# ---------- Handoff automático (Opción 4) ----------
+class TestArchHandoff:
+    def test_arch_measures_pauses_bot(self, client, auth_headers):
+        c = _unique_contact()
+        for txt in ["hola", "4", "Bogotá", "Apartamento"]:
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Maria", "text": txt}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Maria", "text": "3 m x 2 m"}, timeout=15)
+        assert r.status_code == 200
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower()
+        assert "Bogotá" in text and "Apartamento" in text and "3 m x 2 m" in text
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Maria", "text": "?"}, timeout=15)
+        assert r2.json()["paused"] is True
+        assert r2.json()["messages"] == []
+
+
 # ---------- /api/admin/reply (Baileys no vinculado) ----------
 class TestAdminReplyBaileys:
     def test_reply_controlled_when_not_linked(self, client, auth_headers):

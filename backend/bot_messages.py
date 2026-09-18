@@ -297,7 +297,8 @@ def arch_ack(name: str, city: str, location: str, measures: str) -> str:
         f"📍 Ciudad: *{city}*\n"
         f"🏢 Lugar: *{location}*\n"
         f"📏 Medidas: *{measures}*\n\n"
-        "Un asesor de Alfa Polarizados preparará tu *cotización personalizada*."
+        "👩‍💼 En este momento una de nuestras asesoras continuará tu atención de forma "
+        "personalizada para preparar tu *cotización* y agendar la visita. 😊"
     )
 
 
@@ -581,8 +582,9 @@ def build_reply(incoming_text: str, session: dict):
     if step == "arch_measures":
         session["arch_measures"] = text
         session["step"] = None
+        session["request_human"] = True
         return [_msg(arch_ack(session.get("name", ""), session.get("arch_city", "-"),
-                              session.get("arch_location", "-"), text) + AGENDAR + BACK_HINT)]
+                              session.get("arch_location", "-"), text))]
 
     # ----- Sin paso activo: selección de servicio en el menú -----
     if text in SERVICES:

@@ -60,6 +60,7 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - ✅ Bug "repite mensajes al vincular QR" + "No entendí tu mensaje" al enviar modelo: causa raíz = sockets Baileys duplicados tras reconexión (códigos 515/408) y replay de historial al vincular. Fix en index.js: (1) guard de socket único (handlers del socket viejo se ignoran + removeAllListeners + end), (2) ignorar mensajes con timestamp anterior a la vinculación (historial), (3) dedupe por message ID.
 - ✅ Título del front y panel cambiado a "Chatbot Alfa" (index.html, login, sidebar, header del simulador).
 - ✅ Opción 3 (Antiatraco): tras elegir plan, responde "una asesora continuará tu atención personalizada" y el bot se PAUSA para ese contacto (bot_paused=true en DB, handoff automático vía flag session["request_human"] en bot_incoming). Se reactiva desde el panel. Test: TestAntiatracoHandoff. 65/65 pytest OK.
+- ✅ Opción 4 (Arquitectónico): tras enviar medidas, muestra resumen + "una asesora preparará tu cotización" y el bot se PAUSA igual que opción 3. Test: TestArchHandoff. 66/66 pytest OK.
 - ⚠️ Menú duplicado: causado por doble procesamiento de sockets Baileys (fix ya en index.js). Requiere Save to GitHub + redeploy Railway para aplicarse en producción.
 - ✅ 64/64 pytest backend pasando.
 - Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.
