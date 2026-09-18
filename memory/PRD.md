@@ -74,6 +74,8 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - PENDIENTE USUARIO: Save to GitHub + redeploy Railway (aplica resolveJid + socket único + dedupe) + redeploy Emergent.
 - ✅ Afirmaciones cortas ("Si", "Claro", "Ok", etc.) ya NO se citan como "Tomé nota: Si" — responde "¡Perfecto! 🙌" + handoff directo (AFFIRMATIONS en handoff_agendar). Fechas reales sí se citan. Test: test_affirmation_not_quoted. 73/73 pytest OK.
 - ℹ️ Síntoma "hay que escribir 2 veces" = Railway sigue con código viejo (verificado: /status responde 200 sin token = middleware ausente). Además el LID llega en 2 formas ("id:5@lid" e "id@lid") generando 2 claves de sesión. Todo corregido en el código nuevo; requiere redeploy.
+- ✅ CAUSA RAÍZ #2 (producción): el backend de Emergent corre con MÚLTIPLES WORKERS y las sesiones estaban en memoria por proceso → menú repetido, pasos perdidos, "escribir 2 veces". FIX DEFINITIVO: sesiones del bot persistidas en MongoDB (colección bot_sessions, helpers get_session/save_session, is_paused siempre fresco desde conversations). Verificado: el flujo sobrevive reinicio completo del backend. Loop de reenganche migrado a Mongo. 73/73 pytest OK.
+- RESPUESTA a "¿backend con código viejo?": NO — producción ya tenía el código nuevo; el problema era multi-worker + sesiones en memoria.
 - ⚠️ Menú duplicado: causado por doble procesamiento de sockets Baileys (fix ya en index.js). Requiere Save to GitHub + redeploy Railway para aplicarse en producción.
 - ✅ 64/64 pytest backend pasando.
 - Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.

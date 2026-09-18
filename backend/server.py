@@ -57,8 +57,27 @@ db = mongo_client[os.environ['DB_NAME']]
 app = FastAPI(title="Alfa Polarizados - Bot Andrea")
 api_router = APIRouter(prefix="/api")
 
-# Estado en memoria: sesión por contacto (saludo, servicio, esperando vehículo, human)
+# Estado en memoria: solo para el simulador /api/bot/preview
 sessions: dict[str, dict] = {}
+
+
+# ---------- Sesiones del bot persistidas en MongoDB (multi-worker safe) ----------
+async def get_session(contact: str) -> dict:
+    doc = await db.bot_sessions.find_one({"contact": contact}, {"_id": 0})
+    return dict(doc["data"]) if doc else {}
+
+
+async def save_session(contact: str, session: dict):
+    await db.bot_sessions.update_one(
+        {"contact": contact},
+        {"$set": {"contact": contact, "data": session}},
+        upsert=True,
+    )
+
+
+async def is_paused(contact: str) -> bool:
+    conv = await db.conversations.find_one({"contact": contact}, {"_id": 0, "bot_paused": 1})
+    return bool(conv and conv.get("bot_paused"))
 
 
 # ---------- Persistencia de mensajes ----------
@@ -106,7 +125,7 @@ async def bot_incoming(payload: dict):
     if not contact:
         return {"paused": False, "messages": []}
 
-    session = sessions.setdefault(contact, {})
+    session = await get_session(contact)
     if name and not session.get("name"):
         session["name"] = name.split()[0] if name.split() else name
     session["last_activity"] = time.time()
@@ -114,11 +133,9 @@ async def bot_incoming(payload: dict):
 
     await log_message(contact, "in", text, name=session.get("name"))
 
-    # Respetar pausa (control humano desde el panel)
-    if "human" not in session:
-        conv = await db.conversations.find_one({"contact": contact})
-        session["human"] = bool(conv and conv.get("bot_paused"))
-    if session.get("human"):
+    # Respetar pausa (control humano desde el panel) — leída fresca de Mongo
+    if await is_paused(contact):
+        await save_session(contact, session)
         return {"paused": True, "messages": []}
 
     if is_audio:
@@ -129,13 +146,13 @@ async def bot_incoming(payload: dict):
 
     # Handoff automático: el flujo pidió pasar a asesora humana → pausar el bot
     if session.pop("request_human", None):
-        session["human"] = True
         await db.conversations.update_one(
             {"contact": contact}, {"$set": {"bot_paused": True}}, upsert=True
         )
 
     for m in messages:
         await log_message(contact, "out", m.get("text", ""), media=m.get("media") or [])
+    await save_session(contact, session)
     return {"paused": False, "messages": messages}
 
 
@@ -214,7 +231,7 @@ async def whatsapp_webhook(
     if not From or (not (Body or "").strip() and not has_media):
         return Response(content=str(MessagingResponse()), media_type="application/xml")
 
-    session = sessions.setdefault(From, {})
+    session = await get_session(From)
     if ProfileName and not session.get("name"):
         session["name"] = ProfileName.split()[0] if ProfileName.split() else ProfileName
     if To:
@@ -229,10 +246,8 @@ async def whatsapp_webhook(
     await log_message(From, "in", Body, media=in_media, name=session.get("name"), channel_from=To)
 
     # Si el bot está en pausa (un asesor tomó la conversación), no responder automáticamente
-    if "human" not in session:
-        conv = await db.conversations.find_one({"contact": From})
-        session["human"] = bool(conv and conv.get("bot_paused"))
-    if session.get("human"):
+    if await is_paused(From):
+        await save_session(From, session)
         return Response(content=str(MessagingResponse()), media_type="application/xml")
 
     # Audio → remitir a la asesora
@@ -256,6 +271,7 @@ async def whatsapp_webhook(
         for url in m.get("media") or []:
             msg.media(url)
         await log_message(From, "out", m.get("text", ""), media=m.get("media") or [])
+    await save_session(From, session)
     return Response(content=str(twiml), media_type="application/xml")
 
 
@@ -284,11 +300,13 @@ async def _reengagement_loop():
     while True:
         await asyncio.sleep(REENGAGE_CHECK_INTERVAL)
         now = time.time()
-        for contact, s in list(sessions.items()):
+        async for doc in db.bot_sessions.find({}, {"_id": 0}):
+            contact = doc.get("contact", "")
+            s = doc.get("data", {})
             if contact.startswith("preview-"):
                 continue
             la = s.get("last_activity")
-            if not la or s.get("reengaged") or not s.get("greeted") or s.get("human"):
+            if not la or s.get("reengaged") or not s.get("greeted") or await is_paused(contact):
                 continue
             if now - la > REENGAGE_AFTER_SECONDS:
                 name = s.get("name", "")
@@ -300,6 +318,7 @@ async def _reengagement_loop():
                 try:
                     await wa_send(contact, body)
                     s["reengaged"] = True
+                    await save_session(contact, s)
                     await log_message(contact, "out", body)
                     logger.info("Reenganche enviado a %s", contact)
                 except Exception as exc:
@@ -353,8 +372,7 @@ async def admin_reply(payload: dict, admin: str = Depends(require_admin)):
         return {"ok": False, "error": result.get("error") or "No se pudo enviar el mensaje"}
 
     # Envío exitoso → un asesor toma la conversación (bot en pausa)
-    sessions.setdefault(contact, {})["human"] = True
-    await db.conversations.update_one({"contact": contact}, {"$set": {"bot_paused": True}})
+    await db.conversations.update_one({"contact": contact}, {"$set": {"bot_paused": True}}, upsert=True)
     await log_message(contact, "out", body)
     return {"ok": True}
 
@@ -365,7 +383,6 @@ async def toggle_bot(payload: dict, admin: str = Depends(require_admin)):
     paused = bool(payload.get("paused"))
     if not contact:
         raise HTTPException(status_code=400, detail="Falta contacto")
-    sessions.setdefault(contact, {})["human"] = paused
     await db.conversations.update_one({"contact": contact}, {"$set": {"bot_paused": paused}}, upsert=True)
     return {"ok": True, "bot_paused": paused}
 
@@ -394,6 +411,7 @@ async def _on_startup():
     await db.users.create_index("username", unique=True)
     await db.conversations.create_index("contact", unique=True)
     await db.messages.create_index("contact")
+    await db.bot_sessions.create_index("contact", unique=True)
     await seed_admin()
     asyncio.create_task(_reengagement_loop())
 
