@@ -69,6 +69,9 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - ✅ Opción 5 (Detailing): tras "Un asesor te ayudará a coordinar tu cita", cualquier respuesta (ej. "Ok") → handoff a asesora + pausa (step handoff_agendar).
 - ✅ Opción 3 (Antiatraco) ya pasaba a asesora tras elegir plan (cualquier texto, ej. "Diamante"); el silencio visto en capturas era por el socket duplicado de Railway.
 - Tests: TestKindFallback + TestAudioHandoff. 72/72 pytest OK.
+- ✅ CAUSA RAÍZ menú repetido / modelo "se devuelve": WhatsApp entrega el mismo usuario con doble identidad (@s.whatsapp.net y @lid). Cada forma creaba una SESIÓN distinta en el backend → menú se repetía y pasos se perdían. Fix en index.js: resolveJid() prefiere siempre el JID de número (remoteJidAlt) → sesión estable. jidToContact ahora guarda solo el número.
+- ⚠️ Contacto 256100427428012@lid quedó pausado en producción por handoffs de prueba → reactivado vía API (18 sep 2026).
+- PENDIENTE USUARIO: Save to GitHub + redeploy Railway (aplica resolveJid + socket único + dedupe) + redeploy Emergent.
 - ⚠️ Menú duplicado: causado por doble procesamiento de sockets Baileys (fix ya en index.js). Requiere Save to GitHub + redeploy Railway para aplicarse en producción.
 - ✅ 64/64 pytest backend pasando.
 - Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.

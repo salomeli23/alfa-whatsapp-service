@@ -28,7 +28,17 @@ let meNumber = null;
 let linkAt = 0; // timestamp (s) en que abrió la conexión actual
 const seenIds = new Set(); // dedupe de mensajes ya procesados
 
-const jidToContact = (jid) => (jid || "").split(":")[0]; // normaliza
+const jidToContact = (jid) => (jid || "").split("@")[0].split(":")[0]; // normaliza a número
+
+// WhatsApp puede identificar al mismo usuario como @s.whatsapp.net (número) o @lid.
+// Preferimos SIEMPRE el JID de número para que la sesión del bot sea estable.
+function resolveJid(msg) {
+  const jid = msg.key.remoteJid || "";
+  const alt = msg.key.remoteJidAlt || "";
+  if (jid.endsWith("@s.whatsapp.net")) return jid;
+  if (alt.endsWith("@s.whatsapp.net")) return alt;
+  return jid;
+}
 
 async function startSock() {
   if (sock) {
@@ -81,7 +91,7 @@ async function startSock() {
     for (const msg of up.messages) {
       try {
         if (!msg.message || msg.key.fromMe) continue;
-        const jid = msg.key.remoteJid || "";
+        const jid = resolveJid(msg);
         if (jid.endsWith("@g.us") || jid === "status@broadcast" || jid.endsWith("@newsletter")) continue;
 
         // Ignorar historial sincronizado al vincular el QR (mensajes viejos)
