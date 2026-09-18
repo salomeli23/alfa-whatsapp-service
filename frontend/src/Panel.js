@@ -42,7 +42,7 @@ function Login({ onLogin }) {
     <div className="login-wrap" data-testid="login-page">
       <form className="login-card" onSubmit={submit}>
         <div className="login-logo"><span className="brand-mark">α</span></div>
-        <h1 className="login-title">Panel Andrea</h1>
+        <h1 className="login-title">Chatbot Alfa</h1>
         <p className="login-sub">Alfa Polarizados · Mensajes de WhatsApp</p>
         <div className="login-field">
           <User size={16} />
@@ -233,7 +233,7 @@ function Dashboard({ onLogout }) {
     <div className="panel" data-testid="dashboard">
       <aside className="sidebar">
         <div className="side-head">
-          <div className="brand"><span className="brand-mark sm">α</span><span className="side-title">Andrea · Chats</span></div>
+          <div className="brand"><span className="brand-mark sm">α</span><span className="side-title">Chatbot Alfa · Chats</span></div>
           <div className="flex items-center gap-1">
             <button className="icon-btn" onClick={() => setShowQR(true)} title="Vincular WhatsApp (QR)" data-testid="open-qr-btn"><QrCode size={16} /></button>
             <button className="icon-btn" onClick={onLogout} title="Salir" data-testid="logout-btn"><LogOut size={16} /></button>

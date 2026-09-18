@@ -25,17 +25,29 @@ let sock = null;
 let currentQR = null; // data URL
 let connState = "connecting"; // connecting | qr | connected | disconnected
 let meNumber = null;
+let linkAt = 0; // timestamp (s) en que abrió la conexión actual
+const seenIds = new Set(); // dedupe de mensajes ya procesados
 
 const jidToContact = (jid) => (jid || "").split(":")[0]; // normaliza
 
 async function startSock() {
+  if (sock) {
+    try {
+      sock.ev.removeAllListeners("creds.update");
+      sock.ev.removeAllListeners("connection.update");
+      sock.ev.removeAllListeners("messages.upsert");
+      sock.end();
+    } catch (e) {}
+  }
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
-  sock = makeWASocket({ version, auth: state, logger, printQRInTerminal: false, syncFullHistory: false });
+  const mySock = makeWASocket({ version, auth: state, logger, printQRInTerminal: false, syncFullHistory: false });
+  sock = mySock;
 
-  sock.ev.on("creds.update", saveCreds);
+  mySock.ev.on("creds.update", saveCreds);
 
-  sock.ev.on("connection.update", async (u) => {
+  mySock.ev.on("connection.update", async (u) => {
+    if (sock !== mySock) return; // socket viejo reconectando → ignorar
     const { connection, lastDisconnect, qr } = u;
     if (qr) {
       currentQR = await qrcode.toDataURL(qr);
@@ -45,7 +57,8 @@ async function startSock() {
     if (connection === "open") {
       connState = "connected";
       currentQR = null;
-      meNumber = (sock.user && sock.user.id) ? sock.user.id.split(":")[0] : null;
+      meNumber = (mySock.user && mySock.user.id) ? mySock.user.id.split(":")[0] : null;
+      linkAt = Math.floor(Date.now() / 1000);
       console.log("WhatsApp conectado:", meNumber);
     }
     if (connection === "close") {
@@ -62,13 +75,26 @@ async function startSock() {
     }
   });
 
-  sock.ev.on("messages.upsert", async (up) => {
+  mySock.ev.on("messages.upsert", async (up) => {
+    if (sock !== mySock) return; // evita doble procesamiento de sockets anteriores
     if (up.type !== "notify") return;
     for (const msg of up.messages) {
       try {
         if (!msg.message || msg.key.fromMe) continue;
         const jid = msg.key.remoteJid || "";
         if (jid.endsWith("@g.us") || jid === "status@broadcast" || jid.endsWith("@newsletter")) continue;
+
+        // Ignorar historial sincronizado al vincular el QR (mensajes viejos)
+        const ts = Number(msg.messageTimestamp || 0);
+        if (linkAt && ts && ts < linkAt - 30) continue;
+
+        // Dedupe por ID de mensaje (WhatsApp puede re-entregar)
+        const mid = msg.key.id || "";
+        if (mid) {
+          if (seenIds.has(mid)) continue;
+          seenIds.add(mid);
+          if (seenIds.size > 500) seenIds.delete(seenIds.values().next().value);
+        }
 
         const m = msg.message;
         const text =

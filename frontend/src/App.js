@@ -110,7 +110,7 @@ function ChatSimulator() {
       <div className="phone-topbar">
         <div className="avatar-a">A</div>
         <div className="flex-1">
-          <div className="text-white font-semibold leading-tight">Andrea · Alfa Polarizados</div>
+          <div className="text-white font-semibold leading-tight">Chatbot Alfa</div>
           <div className="text-[11px] text-emerald-300 flex items-center gap-1">
             <span className="dot-online" /> en línea
           </div>

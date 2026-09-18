@@ -57,5 +57,7 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - ✅ yarn.lock y index.js TRACKEADOS en git.
 - ✅ Backend .env producción: WA_SERVICE_URL=https://alfapola.up.railway.app, WA_TOKEN=camilo231.
 - ✅ Error `ECONNREFUSED ::1:8001` resuelto: index.js ahora usa fallback directo `https://alfapolarizados.online` con sanitización automática de `/panel` y trailing slashes, más logs detallados por mensaje entrante.
+- ✅ Bug "repite mensajes al vincular QR" + "No entendí tu mensaje" al enviar modelo: causa raíz = sockets Baileys duplicados tras reconexión (códigos 515/408) y replay de historial al vincular. Fix en index.js: (1) guard de socket único (handlers del socket viejo se ignoran + removeAllListeners + end), (2) ignorar mensajes con timestamp anterior a la vinculación (historial), (3) dedupe por message ID.
+- ✅ Título del front y panel cambiado a "Chatbot Alfa" (index.html, login, sidebar, header del simulador).
 - ✅ 64/64 pytest backend pasando.
 - Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.
