@@ -61,6 +61,8 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - ✅ Título del front y panel cambiado a "Chatbot Alfa" (index.html, login, sidebar, header del simulador).
 - ✅ Opción 3 (Antiatraco): tras elegir plan, responde "una asesora continuará tu atención personalizada" y el bot se PAUSA para ese contacto (bot_paused=true en DB, handoff automático vía flag session["request_human"] en bot_incoming). Se reactiva desde el panel. Test: TestAntiatracoHandoff. 65/65 pytest OK.
 - ✅ Opción 4 (Arquitectónico): tras enviar medidas, muestra resumen + "una asesora preparará tu cotización" y el bot se PAUSA igual que opción 3. Test: TestArchHandoff. 66/66 pytest OK.
+- ✅ Opción 1: eliminado video "Prueba de seguridad" (quedan 2: instalación + visibilidad). Tras elegir plan y responder cuándo agendar → handoff a asesora + pausa del bot (nuevo step handoff_agendar).
+- ✅ Opción 2 (PPF): eliminada la aclaración de marca ambigua — cualquier marca/modelo continúa el flujo al submenú. Tras cualquier sub-opción (Total, Pintura, Piano Black, Acrílicas) y responder cuándo agendar → handoff a asesora + pausa. Tests: TestScheduleHandoff (3 nuevos). 69/69 pytest OK.
 - ⚠️ Menú duplicado: causado por doble procesamiento de sockets Baileys (fix ya en index.js). Requiere Save to GitHub + redeploy Railway para aplicarse en producción.
 - ✅ 64/64 pytest backend pasando.
 - Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.

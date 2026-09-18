@@ -135,11 +135,12 @@ class TestOption1:
 
         msgs = _preview(client, c, "Toyota Corolla", name="Camila")
         media = _all_media(msgs)
-        # 3 imagenes + 3 videos
+        # 3 imagenes + 2 videos
         images = [u for u in media if u.endswith((".jpg", ".jpeg", ".png"))]
         videos = [u for u in media if u.endswith((".mp4", ".mov", ".webm"))]
         assert len(images) >= 3, f"Esperaba 3+ imágenes, hallé {len(images)}: {images}"
-        assert len(videos) >= 3, f"Esperaba 3+ videos, hallé {len(videos)}: {videos}"
+        assert len(videos) == 2, f"Esperaba 2 videos (sin prueba de seguridad), hallé {len(videos)}: {videos}"
+        assert not any("peliculaseguridad" in u for u in videos), "El video de prueba de seguridad debe estar eliminado"
         # pregunta cual plan gustó
         assert "¿Cuál" in _texts(msgs) or "planes" in _texts(msgs).lower()
 

@@ -209,6 +209,55 @@ class TestPauseIncoming:
         assert len(r2.json()["messages"]) >= 1
 
 
+# ---------- Handoff automático tras agendar (Opciones 1 y 2) ----------
+class TestScheduleHandoff:
+    def test_opt1_schedule_pauses_bot(self, client, auth_headers):
+        c = _unique_contact()
+        for txt in ["hola", "1", "Mazda 3", "cerámico"]:
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Ana", "text": txt}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Ana", "text": "mañana a las 10am"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower()
+        assert "mañana a las 10am" in text
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Ana", "text": "hola"}, timeout=15)
+        assert r2.json()["paused"] is True and r2.json()["messages"] == []
+
+    def test_ppf_ambiguous_brand_continues_flow(self, client):
+        c = _unique_contact()
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Luis", "text": "hola"}, timeout=15)
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Luis", "text": "2"}, timeout=15)
+        # Marca ambigua ("Mazda" sin modelo) -> debe continuar el flujo, sin pedir serie
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Luis", "text": "Mazda"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "Protección Total" in text and "Piano Black" in text
+
+    def test_ppf_schedule_pauses_bot(self, client, auth_headers):
+        c = _unique_contact()
+        for txt in ["hola", "2", "Mazda", "1"]:
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Luis", "text": txt}, timeout=15)
+        # Cualquier respuesta a "¿Agendamos?" -> asesora + pausa
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Luis", "text": "el lunes en la tarde"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower()
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Luis", "text": "?"}, timeout=15)
+        assert r2.json()["paused"] is True and r2.json()["messages"] == []
+
+
 # ---------- Handoff automático (Opción 3) ----------
 class TestAntiatracoHandoff:
     def test_antiatraco_preference_pauses_bot(self, client, auth_headers):

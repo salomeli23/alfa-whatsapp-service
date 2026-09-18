@@ -27,6 +27,11 @@ AGENDAR = (
     "nuestros asesores confirmará tu cupo. 😊"
 )
 
+SCHEDULE_HANDOFF = (
+    "\n\n👩‍💼 En este momento una de nuestras asesoras continuará tu atención de forma "
+    "personalizada para confirmar tu cita. 😊"
+)
+
 INVALID_PREFIX = (
     "No entendí tu mensaje 🤔. Con gusto te ayudo, elige una de nuestras opciones 👇\n\n"
 )
@@ -78,7 +83,6 @@ PLANS_OPT1 = [
 
 VIDEOS_OPT1 = [
     {"title": "🔧 Instalación profesional", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154076/instalacion_seecyr.mp4"},
-    {"title": "🛡️ Prueba de seguridad", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154076/peliculaseguridad_i8zope.mp4"},
     {"title": "👀 Visibilidad", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154083/visibilidad_il08yd.mp4"},
 ]
 
@@ -473,18 +477,6 @@ def build_reply(incoming_text: str, session: dict):
         if sid == "1":
             return _option1_plans(session, text)
         if sid == "2":
-            result = pb_lookup(text)
-            if result[0] == "ambiguous":
-                brand, nombres = result[1], result[2]
-                session["step"] = "ppf_clarify_model"
-                session["ppf_brand"] = brand
-                ejemplos = " / ".join(nombres)
-                saludo = f"¡Gracias, {name}! 🙌" if name else "¡Gracias! 🙌"
-                return [_msg(
-                    f"{saludo} Veo que tu vehículo es *{brand.capitalize()}*.\n"
-                    "¿Cuál es la *serie/modelo* específico? Así te muestro la ficha correcta. 🙂\n\n"
-                    f"Opciones: {ejemplos}" + BACK_HINT
-                )]
             session["step"] = "ppf_protect"
             return [_msg(vehicle_ack(name, text) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
         if sid == "3":
@@ -506,22 +498,12 @@ def build_reply(incoming_text: str, session: dict):
         session["step"] = None
         return [_msg(vehicle_ack(name, text) + AGENDAR + BACK_HINT)]
 
-    if step == "ppf_clarify_model":
-        brand = session.get("ppf_brand", "")
-        # Combinar marca + serie para identificar el modelo exacto
-        combined = text if brand in text.lower() else f"{brand} {text}"
-        session["vehicle"] = combined
-        name = session.get("name", "")
-        session["step"] = "ppf_protect"
-        result = pb_lookup(combined)
-        if result[0] == "ambiguous":
-            ejemplos = " / ".join(result[2])
-            session["step"] = "ppf_clarify_model"
-            return [_msg(
-                "No logré identificar la serie 🤔. Por favor indícame el modelo exacto.\n\n"
-                f"Opciones: {ejemplos}" + BACK_HINT
-            )]
-        return [_msg(vehicle_ack(name, combined) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
+    if step == "handoff_agendar":
+        session["schedule_pref"] = text
+        session["step"] = None
+        session["request_human"] = True
+        nota = f" Tomé nota: *{text}*." if text else ""
+        return [_msg(f"¡Perfecto! 🙌{nota}" + SCHEDULE_HANDOFF)]
 
     if step == "antiatraco_choice":
         session["antiatraco_choice"] = text
@@ -546,14 +528,15 @@ def build_reply(incoming_text: str, session: dict):
         if not plan:
             return [_msg("Por favor elige un plan válido 🙂\n\n" + OPT1_CHOICE_PROMPT + BACK_HINT)]
         session["opt1_plan"] = plan
-        session["step"] = None
+        session["step"] = "handoff_agendar"
         return [_msg(f"¡Excelente elección! 🙌 El *{plan}* es ideal para tu vehículo." + AGENDAR + BACK_HINT)]
 
     if step == "ppf_protect":
-        session["step"] = None
         if normalized in ("1",) or "total" in normalized:
+            session["step"] = "handoff_agendar"
             return [_msg(PPF_TOTAL + AGENDAR + BACK_HINT)]
         if normalized in ("2",) or "pintura" in normalized:
+            session["step"] = "handoff_agendar"
             return [_msg(
                 "¡Perfecto! 🙌 Para *Pintura Completa*\n\n"
                 "Uno de nuestros asesores continuará la conversación contigo para darte la "
@@ -561,12 +544,13 @@ def build_reply(incoming_text: str, session: dict):
                 + AGENDAR + BACK_HINT
             )]
         if normalized in ("3",) or "piano" in normalized:
+            session["step"] = "handoff_agendar"
             msgs = _piano_black(session)
             msgs[-1]["text"] += BACK_HINT
             return msgs
         if normalized in ("4",) or "acril" in normalized or "acríl" in normalized:
-            return [_msg(PPF_ACRILICAS + BACK_HINT)]
-        session["step"] = "ppf_protect"
+            session["step"] = "handoff_agendar"
+            return [_msg(PPF_ACRILICAS + AGENDAR + BACK_HINT)]
         return [_msg("Por favor elige una opción válida 🙂\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
 
     if step == "arch_city":
