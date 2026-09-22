@@ -1,4 +1,5 @@
 import os
+import re
 
 # El envío proactivo/diferido por API REST requiere que la cuenta Twilio tenga
 # aprobado el perfil de cumplimiento (KYC en Trust Hub). Mientras no esté aprobado,
@@ -90,6 +91,7 @@ PLANS_OPT1 = [
 
 VIDEOS_OPT1 = [
     {"title": "🔧 Instalación profesional", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154076/instalacion_seecyr.mp4"},
+    {"title": "🛡️ Prueba de seguridad", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154076/peliculaseguridad_i8zope.mp4"},
     {"title": "👀 Visibilidad", "url": "https://res.cloudinary.com/dewemwkqf/video/upload/v1787154083/visibilidad_il08yd.mp4"},
 ]
 
@@ -114,27 +116,31 @@ PPF_PROTECT_MENU = (
     "Responde con el número o el nombre del servicio."
 )
 
-PPF_TOTAL = (
-    "✨ Full PPF – Protección Total\n"
+PPF_TOTAL_INFO = (
+    "🛡️ *Full PPF – Protección Total*\n"
     "Este servicio protege completamente tu vehículo:\n"
     "🚗 Pintura\n"
     "🖤 Piano Black\n"
-    "💡 Partes Acrílicas\n"
-    "✅ Película PPF Premium.\n"
-    "✅ Corte de precisión en plotter.\n"
-    "✅ Garantía de 10 años.\n"
-    "✅ Instalación profesional.\n"
-    "Uno de nuestros asesores continuará la conversación para enviarte la cotización exacta según tu vehículo. 😊"
+    "💡 Partes Acrílicas\n\n"
+    "✅ Película PPF Premium\n"
+    "✅ Corte de precisión en plotter\n"
+    "✅ Garantía de 10 años\n"
+    "✅ Instalación profesional"
 )
 
-PPF_PINTURA = (
-    "✨ Full PPF – Protección Total ✨\n"
-    "🚗 Cobertura completa: pintura, partes acrílicas y detalles en piano black.\n"
-    "✂️ Cortes de precisión en plotter.\n"
-    "🛡️ Película PPF Premium.\n"
-    "✅ Garantía de 10 años.\n"
-    "💰 Inversión total: $10.000.000 COP\n"
-    "¿Te reservo tu cupo para asegurar precio y disponibilidad?"
+PPF_PINTURA_INFO = (
+    "✨ *PPF – Pintura Completa*\n"
+    "La máxima protección para toda la pintura de tu vehículo:\n\n"
+    "✅ Película transparente autorreparable ante rayones ligeros\n"
+    "✅ Protección contra piedras, insectos y químicos\n"
+    "✅ Conserva el brillo de fábrica y el valor de reventa\n"
+    "✅ Película PPF Premium con garantía de 10 años\n"
+    "✅ Instalación profesional"
+)
+
+PPF_TO_ADVISOR = (
+    "👩‍💼 Uno de nuestros asesores continuará contigo para darte la *cotización exacta* "
+    "según tu vehículo. 😊"
 )
 
 PPF_ACRILICAS = (
@@ -189,7 +195,7 @@ LOCATION_MSG = (
 
 # Catálogo Piano Black (10 modelos)
 PB_MODELS = {
-    "mazda cx-30": {"nombre": "Mazda CX-30", "precio": "$900.000 COP", "piezas": 17,
+    "mazda cx-30": {"nombre": "Mazda CX-30", "precio": "$950.000 COP", "piezas": 17,
         "detalle": "1. Triángulos puertas delanteras — 2\n2. Parales de las puertas — 4\n3. LS de las puertas — 2\n4. LS del spoiler — 2\n5. Spoiler — 1\n6. Pantalla — 1\n7. Consola central — 1\n8. Módulos elevavidrios — 4",
         "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785512481/WhatsApp_Image_2026-07-14_at_12.26.06_PM_za2dys.jpg"},
     "mazda cx-5": {"nombre": "Mazda CX-5", "precio": "$800.000 COP", "piezas": 14,
@@ -204,7 +210,7 @@ PB_MODELS = {
     "tesla model y": {"nombre": "Tesla Model Y", "precio": "$850.000 COP", "piezas": None,
         "detalle": "1. Farolas\n2. Triángulos de espejos\n3. Espejos\n4. Parales laterales\n5. Tapa del cargador\n6. Pantallas — 2",
         "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/teslamodely_lugjft.jpg"},
-    "ford territory": {"nombre": "Ford Territory", "precio": "$1.100.000 COP", "piezas": 16,
+    "ford territory": {"nombre": "Ford Territory", "precio": "$1.300.000 COP", "piezas": 16,
         "detalle": "1. Piano black inferior farolas — 2\n2. Espejos — 2\n3. Parales de las puertas — 8\n4. LS del tapabaúl — 2\n5. Pantalla — 1\n6. Consola central — 1",
         "img": "https://res.cloudinary.com/dewemwkqf/image/upload/v1785513545/fordterritory_vjoyml.jpg"},
     "deepal s05": {"nombre": "Deepal S05", "precio": "$800.000 COP", "piezas": 9,
@@ -366,7 +372,6 @@ SERVICES = {
         "✅ Reduce el calor y el consumo de aire acondicionado ❄️\n"
         "✅ Bloqueo de rayos UV que protege muebles y pisos 🛋️\n"
         "✅ Mayor privacidad sin perder iluminación natural 🌤️\n"
-        "✅ Películas de seguridad y decorativas disponibles 🪟\n"
         "✅ Instalación para ventanas y fachadas de vidrio 🏗️\n\n"
         "💵 Cotización *por m²* según el tipo de película y la superficie a cubrir."
     ),
@@ -377,7 +382,7 @@ SERVICES = {
         "✅ Pulido y corrección de rayones y micro-marcas 💎\n"
         "✅ Recubrimiento cerámico de larga duración 🛡️\n"
         "✅ Detallado profundo de interiores 🧽\n"
-        "✅ Restauración de faros y plásticos 💡\n\n"
+        "✅ Hidratación de partes plásticas 💡\n\n"
         "💵 Desde *$700.000 COP* (según el paquete y el estado del vehículo)."
     ),
 }
@@ -417,16 +422,22 @@ def _option1_plans(session: dict, model: str):
     return msgs
 
 
+def _piezas_parentesis(detalle: str) -> str:
+    """Convierte '1. Espejos — 2' en '1. Espejos (2)'."""
+    return re.sub(r"\s*—\s*(\d+)\s*$", r" (\1)", detalle, flags=re.MULTILINE)
+
+
 def _piano_black(session: dict):
     """Respuesta Piano Black detectando el modelo del vehículo indicado."""
     vehicle = session.get("vehicle", "")
     data = find_pb_model(vehicle)
     if data:
         piezas = f"\n🔩 Piezas: {data['piezas']}" if data.get("piezas") else ""
+        detalle = _piezas_parentesis(data["detalle"])
         text = (
             f"🖤 *Piano Black – {data['nombre']}*\n\n"
             f"💵 Precio: *{data['precio']}*{piezas}\n\n"
-            f"*Piezas a cubrir:*\n{data['detalle']}\n\n"
+            f"*Piezas a cubrir:*\n{detalle}\n\n"
             "✅ Película PPF Premium · ✅ Corte de precisión en plotter · ✅ Garantía de 10 años."
             + AGENDAR
         )
@@ -483,6 +494,18 @@ def build_reply(incoming_text: str, session: dict):
         if sid == "1":
             return _option1_plans(session, text)
         if sid == "2":
+            result = pb_lookup(text)
+            if result[0] == "ambiguous":
+                brand, nombres = result[1], result[2]
+                session["step"] = "ppf_clarify_model"
+                session["ppf_brand"] = brand
+                opciones = "\n".join(f"🔹 {n}" for n in nombres)
+                saludo = f"¡Gracias, {name}! 🙌" if name else "¡Gracias! 🙌"
+                return [_msg(
+                    f"{saludo} Para *{brand.capitalize()}* tenemos información detallada de estos modelos 👇\n\n"
+                    f"{opciones}\n\n"
+                    "Indícame cuál es el tuyo para continuar. 🙂" + BACK_HINT
+                )]
             session["step"] = "ppf_protect"
             return [_msg(vehicle_ack(name, text) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
         if sid == "3":
@@ -541,16 +564,21 @@ def build_reply(incoming_text: str, session: dict):
 
     if step == "ppf_protect":
         if normalized in ("1",) or "total" in normalized:
-            session["step"] = "handoff_agendar"
-            return [_msg(PPF_TOTAL + AGENDAR + BACK_HINT)]
+            session["step"] = None
+            session["request_human"] = True
+            return [
+                _msg("¡Excelente elección! 🙌 Elegiste *Protección Total* (Full PPF)."),
+                _msg(PPF_TOTAL_INFO),
+                _msg(PPF_TO_ADVISOR),
+            ]
         if normalized in ("2",) or "pintura" in normalized:
-            session["step"] = "handoff_agendar"
-            return [_msg(
-                "¡Perfecto! 🙌 Para *Pintura Completa*\n\n"
-                "Uno de nuestros asesores continuará la conversación contigo para darte la "
-                "cotización exacta según tu vehículo. 😊"
-                + AGENDAR + BACK_HINT
-            )]
+            session["step"] = None
+            session["request_human"] = True
+            return [
+                _msg("¡Perfecto! 🙌 Elegiste *Pintura Completa*."),
+                _msg(PPF_PINTURA_INFO),
+                _msg(PPF_TO_ADVISOR),
+            ]
         if normalized in ("3",) or "piano" in normalized:
             session["step"] = "handoff_agendar"
             msgs = _piano_black(session)
@@ -560,6 +588,22 @@ def build_reply(incoming_text: str, session: dict):
             session["step"] = "handoff_agendar"
             return [_msg(PPF_ACRILICAS + AGENDAR + BACK_HINT)]
         return [_msg("Por favor elige una opción válida 🙂\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
+
+    if step == "ppf_clarify_model":
+        brand = session.get("ppf_brand", "")
+        combined = text if brand in text.lower() else f"{brand.capitalize()} {text}"
+        session["vehicle"] = combined
+        name = session.get("name", "")
+        result = pb_lookup(combined)
+        if result[0] == "ambiguous":
+            opciones = "\n".join(f"🔹 {n}" for n in result[2])
+            session["step"] = "ppf_clarify_model"
+            return [_msg(
+                "No logré identificar el modelo 🤔. Por favor elige uno de estos 👇\n\n"
+                f"{opciones}" + BACK_HINT
+            )]
+        session["step"] = "ppf_protect"
+        return [_msg(vehicle_ack(name, combined) + "\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
 
     if step == "arch_city":
         session["arch_city"] = text

@@ -135,12 +135,12 @@ class TestOption1:
 
         msgs = _preview(client, c, "Toyota Corolla", name="Camila")
         media = _all_media(msgs)
-        # 3 imagenes + 2 videos
+        # 3 imagenes + 3 videos (incluye prueba de seguridad)
         images = [u for u in media if u.endswith((".jpg", ".jpeg", ".png"))]
         videos = [u for u in media if u.endswith((".mp4", ".mov", ".webm"))]
         assert len(images) >= 3, f"Esperaba 3+ imágenes, hallé {len(images)}: {images}"
-        assert len(videos) == 2, f"Esperaba 2 videos (sin prueba de seguridad), hallé {len(videos)}: {videos}"
-        assert not any("peliculaseguridad" in u for u in videos), "El video de prueba de seguridad debe estar eliminado"
+        assert len(videos) == 3, f"Esperaba 3 videos, hallé {len(videos)}: {videos}"
+        assert any("peliculaseguridad" in u for u in videos), "Debe incluir el video de prueba de seguridad"
         # pregunta cual plan gustó
         assert "¿Cuál" in _texts(msgs) or "planes" in _texts(msgs).lower()
 
@@ -203,8 +203,10 @@ class TestOption2PPF:
         c = self._enter_ppf(client)
         msgs = _preview(client, c, "1", name="Ana")
         text = _texts(msgs)
-        assert "Full PPF" in text
-        assert "agendar" in text.lower() or "Agendamos" in text
+        assert "Protección Total" in text or "Full PPF" in text
+        assert "asesor" in text.lower()
+        # No debe hablar de cita/agendar en Protección Total
+        assert "Agendamos" not in text and "agendar" not in text.lower()
 
     def test_ppf_2_pintura(self, client):
         c = self._enter_ppf(client)
@@ -212,11 +214,12 @@ class TestOption2PPF:
         text = _texts(msgs)
         assert "Pintura Completa" in text
         assert "asesor" in text.lower()
+        assert "Agendamos" not in text and "agendar" not in text.lower()
 
     @pytest.mark.parametrize("vehicle,expected_name,expected_price", [
         ("Mazda CX-5", "Mazda CX-5", "$800.000"),
         ("Tesla Model Y", "Tesla Model Y", "$850.000"),
-        ("Ford Territory", "Ford Territory", "$1.100.000"),
+        ("Ford Territory", "Ford Territory", "$1.300.000"),
         ("BYD Yuan Plus", "BYD Yuan Plus", "$1.300.000"),
     ])
     def test_ppf_piano_black_catalog(self, client, vehicle, expected_name, expected_price):
@@ -226,6 +229,8 @@ class TestOption2PPF:
         media = _all_media(msgs)
         assert expected_name in text
         assert expected_price in text
+        # las piezas a cubrir van entre paréntesis, no con guion
+        assert "(" in text
         assert any("cloudinary" in u for u in media), f"Se esperaba imagen del catalogo, media={media}"
 
     def test_ppf_piano_black_not_in_catalog(self, client):

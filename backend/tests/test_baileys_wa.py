@@ -279,34 +279,37 @@ class TestScheduleHandoff:
                          json={"contact": c, "name": "Ana", "text": "hola"}, timeout=15)
         assert r2.json()["paused"] is True and r2.json()["messages"] == []
 
-    def test_ppf_ambiguous_brand_continues_flow(self, client):
+    def test_ppf_ambiguous_brand_shows_models(self, client):
         c = _unique_contact()
         client.post(f"{API}/bot/incoming",
                     json={"contact": c, "name": "Luis", "text": "hola"}, timeout=15)
         client.post(f"{API}/bot/incoming",
                     json={"contact": c, "name": "Luis", "text": "2"}, timeout=15)
-        # Marca ambigua ("Mazda" sin modelo) -> debe continuar el flujo, sin pedir serie
+        # Marca ambigua ("Mazda") -> muestra los modelos con info de piano black
         r = client.post(f"{API}/bot/incoming",
                         json={"contact": c, "name": "Luis", "text": "Mazda"}, timeout=15)
         text = "\n".join(m["text"] for m in r.json()["messages"])
-        assert "Protección Total" in text and "Piano Black" in text
+        assert "Mazda CX-30" in text and "Mazda CX-5" in text
+        # Al indicar el modelo, continúa al submenú PPF
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Luis", "text": "CX-5"}, timeout=15)
+        text2 = "\n".join(m["text"] for m in r2.json()["messages"])
+        assert "Protección Total" in text2 and "Piano Black" in text2
 
-    def test_ppf_schedule_pauses_bot(self, client, auth_headers):
+    def test_ppf_total_goes_to_advisor_no_cita(self, client, auth_headers):
         c = _unique_contact()
-        for txt in ["hola", "2", "Mazda", "1"]:
+        for txt in ["hola", "2", "Mazda CX-5", "1"]:
             client.post(f"{API}/bot/incoming",
                         json={"contact": c, "name": "Luis", "text": txt}, timeout=15)
-        # Cualquier respuesta a "¿Agendamos?" -> asesora + pausa
-        r = client.post(f"{API}/bot/incoming",
-                        json={"contact": c, "name": "Luis", "text": "el lunes en la tarde"}, timeout=15)
-        text = "\n".join(m["text"] for m in r.json()["messages"])
-        assert "asesora" in text.lower()
+        # tras elegir Protección Total: respuesta + info + asesor, sin cita, y bot pausado
+        r = client.get(f"{API}/admin/messages", headers=auth_headers,
+                       params={"contact": c}, timeout=15)
+        bodies = "\n".join(m["body"] for m in r.json())
+        assert "Protección Total" in bodies and "asesor" in bodies.lower()
+        assert "Agendamos" not in bodies
         rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
         conv = next((x for x in rc.json() if x["contact"] == c), None)
         assert conv is not None and conv.get("bot_paused") is True
-        r2 = client.post(f"{API}/bot/incoming",
-                         json={"contact": c, "name": "Luis", "text": "?"}, timeout=15)
-        assert r2.json()["paused"] is True and r2.json()["messages"] == []
 
     def test_affirmation_not_quoted(self, client):
         # "Si" / "Claro" no deben citarse como "Tomé nota: Si"
