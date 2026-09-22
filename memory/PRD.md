@@ -80,3 +80,4 @@ entrada → repetir menú amablemente. Credenciales Twilio como variables de ent
 - ⚠️ Menú duplicado: causado por doble procesamiento de sockets Baileys (fix ya en index.js). Requiere Save to GitHub + redeploy Railway para aplicarse en producción.
 - ✅ 64/64 pytest backend pasando.
 - Pasos usuario: 1) Save to GitHub, 2) Redeploy Railway (para aplicar index.js blindado), 3) Probar mensaje desde otro número.
+- ✅ Enrutador por palabras clave (_guess_service): texto libre o saludo largo con intención (polarizado/ppf/antiatraco/detailing/casa-ventana) entra DIRECTO al flujo del servicio en vez de reenviar el menú. Saludo corto puro (<=3 palabras) sigue mostrando el menú. Saludo largo sin intención → respuesta guiada corta ofreciendo Polarizado/PPF/Antiatraco (sin menú completo). Tests: test_free_text_routes_to_service. 74/74 pytest OK.

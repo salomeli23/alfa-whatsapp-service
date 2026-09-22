@@ -453,6 +453,21 @@ def _piano_black(session: dict):
     return [_msg(text)]
 
 
+# Texto libre → servicio probable, para responder conforme a lo que pregunta
+def _guess_service(normalized: str):
+    if any(k in normalized for k in ["casa", "apartamento", "oficina", "edificio", "local", "ventana", "fachada"]):
+        return "4"
+    if any(k in normalized for k in ["ppf", "piano black", "proteccion de pintura", "protección de pintura", "acrilic", "acrílic"]):
+        return "2"
+    if any(k in normalized for k in ["antiatraco", "atraco", "robo", "robar", "seguridad vehicular"]):
+        return "3"
+    if any(k in normalized for k in ["detailing", "lavado", "limpieza", "detallado", "tapiceria", "tapicería", "estetica", "estética"]):
+        return "5"
+    if any(k in normalized for k in ["polariz", "tinte", "lamina", "lámina", "vidrios polarizados", "pelicula para carro", "película para carro"]):
+        return "1"
+    return None
+
+
 def build_reply(incoming_text: str, session: dict):
     """Devuelve una lista de mensajes [{text, media[]}] y actualiza el estado de la sesión."""
     text = (incoming_text or "").strip()
@@ -626,7 +641,22 @@ def build_reply(incoming_text: str, session: dict):
     if text in SERVICES:
         return _deliver_service(session, text)
 
-    if any(k in normalized for k in ["hola", "buenas", "buenos", "hi", "hello", "info", "informacion", "información"]):
+    # Texto libre (incl. saludos largos): responder conforme a lo que pregunta
+    sid_guess = _guess_service(normalized)
+    if sid_guess:
+        return _deliver_service(session, sid_guess)
+
+    # Saludo corto puro → menú. Saludo largo sin intención clara → guía corta (no reenviar menú)
+    if len(normalized.split()) <= 3 and any(k in normalized for k in ["hola", "buenas", "buenos", "hi", "hello", "info", "informacion", "información"]):
         return [_msg(WELCOME_MESSAGE)]
 
-    return [_msg(INVALID_PREFIX + WELCOME_MESSAGE)]
+    # Respuesta amable guiada (sin reenviar el menú completo)
+    name = session.get("name", "")
+    saludo = f"{name}, con" if name else "Con"
+    return [_msg(
+        f"¡{saludo} gusto te ayudo! 😊 Cuéntame cuál de nuestros servicios te interesa:\n\n"
+        "🚗 *Polarizado* (responde 1)\n"
+        "🛡️ *PPF – Protección de pintura* (responde 2)\n"
+        "🚨 *Película Antiatraco* (responde 3)\n\n"
+        "También puedes escribirme tu consulta y te oriento. 💬"
+    )]

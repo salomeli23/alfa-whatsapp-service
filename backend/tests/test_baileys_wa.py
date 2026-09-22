@@ -220,8 +220,26 @@ class TestKindFallback:
         text = "\n".join(m["text"] for m in r.json()["messages"])
         assert "no entendí" not in text.lower()
         assert "😊" in text or "gusto" in text.lower()
-        # sigue ofreciendo las opciones (continuidad)
-        assert "opciones" in text.lower() or "servicio" in text.lower()
+        # guía con servicios, sin reenviar el menú completo
+        assert "servicio" in text.lower()
+        assert "Soy Andrea" not in text
+
+    def test_free_text_routes_to_service(self, client):
+        # Texto largo con intención clara -> entra directo al flujo del servicio
+        cases = [
+            ("hola buenas, cuanto cuesta el polarizado de un carro?", "marca y modelo"),
+            ("me interesa el ppf para proteger la pintura", "marca y modelo"),
+            ("quiero la pelicula antiatraco", "marca y modelo"),
+            ("necesito polarizado para las ventanas de mi casa", "ciudad"),
+        ]
+        for i, (msg, esperado) in enumerate(cases):
+            c = _unique_contact()
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": "hola"}, timeout=15)
+            r = client.post(f"{API}/bot/incoming",
+                            json={"contact": c, "name": "Rosa", "text": msg}, timeout=15)
+            text = "\n".join(m["text"] for m in r.json()["messages"])
+            assert esperado in text.lower(), f"Caso {i}: '{msg}' no entró al flujo esperado: {text[:120]}"
 
     def test_detailing_schedule_pauses_bot(self, client, auth_headers):
         c = _unique_contact()
