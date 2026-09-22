@@ -343,6 +343,50 @@ class TestScheduleHandoff:
             assert "asesora" in text.lower()
 
 
+# ---------- Combo "1 y 2" + palabras clave en pasos de elección ----------
+class TestComboAndKeywords:
+    def test_combo_1_y_2(self, client):
+        c = _unique_contact()
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Ana", "text": "hola"}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Ana", "text": "1 y 2"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "Primero" in text and "Polarizado" in text and "PPF" in text
+        assert "marca y modelo" in text.lower()
+        # Tras el vehículo: planes de polarizado + menú PPF juntos
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Ana", "text": "Mazda 3"}, timeout=15)
+        text2 = "\n".join(m["text"] for m in r2.json()["messages"])
+        assert "Cerámico" in text2 and "Piano Black" in text2
+        # Elegir plan de polarizado sigue funcionando
+        r3 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Ana", "text": "cerámico"}, timeout=15)
+        assert "Excelente" in "\n".join(m["text"] for m in r3.json()["messages"])
+
+    def test_keyword_switch_inside_choice_step(self, client):
+        c = _unique_contact()
+        for txt in ["hola", "1", "Mazda 3"]:
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Ana", "text": txt}, timeout=15)
+        # En el paso de elegir plan, dice "me interesa el ppf" -> salta al menú PPF
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Ana", "text": "me interesa el ppf"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "Protección Total" in text and "Piano Black" in text
+
+    def test_keyword_pelicula_y_pernos(self, client):
+        for msg, esperado in [("quiero la pelicula", "marca y modelo"),
+                              ("cuanto por lavar pernos", "marca y modelo")]:
+            c = _unique_contact()
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Ana", "text": "hola"}, timeout=15)
+            r = client.post(f"{API}/bot/incoming",
+                            json={"contact": c, "name": "Ana", "text": msg}, timeout=15)
+            text = "\n".join(m["text"] for m in r.json()["messages"])
+            assert esperado in text.lower(), f"'{msg}' no enrutó: {text[:100]}"
+
+
 # ---------- Handoff automático (Opción 3) ----------
 class TestAntiatracoHandoff:
     def test_antiatraco_preference_pauses_bot(self, client, auth_headers):

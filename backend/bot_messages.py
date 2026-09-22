@@ -459,11 +459,11 @@ def _guess_service(normalized: str):
         return "4"
     if any(k in normalized for k in ["ppf", "piano black", "proteccion de pintura", "protección de pintura", "acrilic", "acrílic"]):
         return "2"
-    if any(k in normalized for k in ["antiatraco", "atraco", "robo", "robar", "seguridad vehicular"]):
+    if any(k in normalized for k in ["antiatraco", "atraco", "robo", "robar", "seguridad vehicular", "pelicula", "película"]):
         return "3"
-    if any(k in normalized for k in ["detailing", "lavado", "limpieza", "detallado", "tapiceria", "tapicería", "estetica", "estética"]):
+    if any(k in normalized for k in ["detailing", "lavado", "limpieza", "detallado", "tapiceria", "tapicería", "estetica", "estética", "pernos", "plasticos", "plásticos"]):
         return "5"
-    if any(k in normalized for k in ["polariz", "tinte", "lamina", "lámina", "vidrios polarizados", "pelicula para carro", "película para carro"]):
+    if any(k in normalized for k in ["polariz", "tinte", "lamina", "lámina", "vidrios polarizados"]):
         return "1"
     return None
 
@@ -507,7 +507,10 @@ def build_reply(incoming_text: str, session: dict):
         sid = session.get("service")
         name = session.get("name", "")
         if sid == "1":
-            return _option1_plans(session, text)
+            msgs = _option1_plans(session, text)
+            if session.get("combo_ppf"):
+                msgs.append(_msg("🛡️ Y para el *PPF*, indícame qué deseas proteger:\n" + PPF_PROTECT_MENU))
+            return msgs
         if sid == "2":
             result = pb_lookup(text)
             if result[0] == "ambiguous":
@@ -572,6 +575,17 @@ def build_reply(incoming_text: str, session: dict):
         elif "irr" in normalized or "infrarroj" in normalized:
             plan = "Plan IRR"
         if not plan:
+            # Continuidad por palabras del menú dentro del paso de elección
+            if any(k in normalized for k in ["total", "pintura", "piano", "acril", "acríl"]):
+                session["step"] = "ppf_protect"
+                return build_reply(text, session)
+            if "ppf" in normalized:
+                session["service"] = "2"
+                session["step"] = "ppf_protect"
+                return [_msg(PPF_PROTECT_MENU + BACK_HINT)]
+            sid2 = _guess_service(normalized)
+            if sid2:
+                return _deliver_service(session, sid2)
             return [_msg("Por favor elige un plan válido 🙂\n\n" + OPT1_CHOICE_PROMPT + BACK_HINT)]
         session["opt1_plan"] = plan
         session["step"] = "handoff_agendar"
@@ -602,6 +616,10 @@ def build_reply(incoming_text: str, session: dict):
         if normalized in ("4",) or "acril" in normalized or "acríl" in normalized:
             session["step"] = "handoff_agendar"
             return [_msg(PPF_ACRILICAS + AGENDAR + BACK_HINT)]
+        # Continuidad por palabras del menú (ej. "mejor polarizado", "antiatraco")
+        sid2 = _guess_service(normalized)
+        if sid2 and sid2 != "2":
+            return _deliver_service(session, sid2)
         return [_msg("Por favor elige una opción válida 🙂\n\n" + PPF_PROTECT_MENU + BACK_HINT)]
 
     if step == "ppf_clarify_model":
@@ -640,6 +658,18 @@ def build_reply(incoming_text: str, session: dict):
     # ----- Sin paso activo: selección de servicio en el menú -----
     if text in SERVICES:
         return _deliver_service(session, text)
+
+    # Selección múltiple "1 y 2" → primero Polarizado, luego PPF
+    if re.search(r"\b1\b", normalized) and re.search(r"\b2\b", normalized):
+        session["service"] = "1"
+        session["step"] = "vehicle"
+        session["combo_ppf"] = True
+        return [
+            _msg("¡Perfecto! 🙌 Primero te comparto la información de *Polarizado* y luego la de *PPF*. 😊"),
+            _msg(SERVICES["1"]),
+            _msg(SERVICES["2"]),
+            _msg(VEHICLE_PROMPT + BACK_HINT),
+        ]
 
     # Texto libre (incl. saludos largos): responder conforme a lo que pregunta
     sid_guess = _guess_service(normalized)
