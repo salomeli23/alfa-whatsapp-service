@@ -228,7 +228,7 @@ class TestKindFallback:
     def test_free_text_routes_to_service(self, client):
         # Texto largo con intención clara -> entra directo al flujo del servicio
         cases = [
-            ("hola buenas, cuanto cuesta el polarizado de un carro?", "marca y modelo"),
+            ("hola buenas, quiero polarizar mi carro", "marca y modelo"),
             ("me interesa el ppf para proteger la pintura", "marca y modelo"),
             ("quiero la pelicula antiatraco", "marca y modelo"),
             ("necesito polarizado para las ventanas de mi casa", "ciudad"),
@@ -342,6 +342,67 @@ class TestScheduleHandoff:
             text = "\n".join(m["text"] for m in r.json()["messages"])
             assert "Tomé nota" not in text, f"'{word}' no debe citarse como nota"
             assert "asesora" in text.lower()
+
+
+# ---------- Consultas complejas → asesora + pausa ----------
+class TestComplexQueryHandoff:
+    @pytest.mark.parametrize("pregunta", [
+        "Sólo manejan polarizados?",
+        "Ustedes manejan también peliculas 3m?",
+        "Full ppf para una ford territory cuanto cuesta?",
+        "Me puedes indicar en qué consiste cada uno, porque no tengo idea.",
+        "No tiene sede en Medellín",
+        "mira esto https://instagram.com/ejemplo",
+    ])
+    def test_complex_query_goes_to_advisor(self, client, auth_headers, pregunta):
+        c = _unique_contact()
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Rosa", "text": "hola"}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": pregunta}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower(), f"'{pregunta}' no fue a asesora: {text[:100]}"
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+
+    def test_complex_query_inside_choice_step(self, client, auth_headers):
+        # Cliente ve los planes y pregunta "en qué consiste cada uno" -> asesora
+        c = _unique_contact()
+        for txt in ["hola", "1", "Mazda 3"]:
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": txt}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa",
+                              "text": "Me puedes indicar en qué consiste cada uno, porque no tengo idea."}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "asesora" in text.lower()
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+
+    def test_short_statement_still_routes(self, client):
+        # "quiero ppf" (afirmación corta) NO es consulta compleja -> flujo PPF
+        c = _unique_contact()
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Rosa", "text": "hola"}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": "quiero ppf"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "marca y modelo" in text.lower()
+
+    def test_arch_long_measures_not_handoff(self, client):
+        # Medidas largas en flujo arquitectónico NO deben ir a asesora prematuramente
+        c = _unique_contact()
+        for txt in ["hola", "4", "Bogotá", "Casa"]:
+            client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa", "text": txt}, timeout=15)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa",
+                              "text": "tengo tres ventanas grandes de dos metros por un metro y una puerta de vidrio"},
+                        timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "Medidas" in text  # registró las medidas (resumen), no el mensaje de pregunta
 
 
 # ---------- Combo "1 y 2" + palabras clave en pasos de elección ----------

@@ -460,6 +460,26 @@ def _piano_black(session: dict):
     return [_msg(text)]
 
 
+QUESTION_HANDOFF = (
+    "¡Excelente pregunta! 😊 Para darte la respuesta más precisa, una de nuestras "
+    "asesoras 🙋‍♀️ continuará tu atención de forma personalizada en este momento."
+)
+
+
+def _is_complex_query(normalized: str) -> bool:
+    """Texto muy largo, links o preguntas extensas → asesora humana."""
+    if "http" in normalized or "www." in normalized:
+        return True
+    words = normalized.split()
+    if len(words) >= 10:
+        return True
+    if ("?" in normalized or "¿" in normalized) and len(words) >= 3:
+        return True
+    if any(k in normalized for k in ["sede", "sucursal"]):
+        return True
+    return False
+
+
 # Texto libre → servicio probable, para responder conforme a lo que pregunta
 def _guess_service(normalized: str):
     if any(k in normalized for k in ["casa", "apartamento", "oficina", "edificio", "local", "ventana", "fachada"]):
@@ -507,6 +527,14 @@ def build_reply(incoming_text: str, session: dict):
         return [_msg(LOCATION_MSG)]
 
     step = session.get("step")
+
+    # Consultas complejas (pregunta extensa, texto largo, links) → asesora humana.
+    # No aplica en pasos de recolección de datos (vehículo, arquitectura) donde el texto largo es válido.
+    if step in (None, "opt1_choice", "ppf_protect", "ppf_clarify_model", "antiatraco_choice", "handoff_agendar") \
+            and _is_complex_query(normalized):
+        session["step"] = None
+        session["request_human"] = True
+        return [_msg(QUESTION_HANDOFF)]
 
     # ----- Manejo de pasos activos (antes de la selección de menú) -----
     if step == "vehicle":
