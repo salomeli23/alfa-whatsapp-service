@@ -194,25 +194,25 @@ class TestOption2PPF:
         _preview(client, c2, "2", name="Ana")
         msgs = _preview(client, c2, "Mazda CX-5", name="Ana")
         text = _texts(msgs)
-        assert "Protección Total" in text
-        assert "Pintura Completa" in text
-        assert "Piano Black" in text
-        assert "Partes Acrílicas" in text
+        assert "Piezas Piano Black" in text
+        assert "Piezas Acrílicas" in text
+        assert "Full Front" in text
+        assert "Full PPF" in text
 
-    def test_ppf_1_total(self, client):
+    def test_ppf_full_ppf(self, client):
         c = self._enter_ppf(client)
-        msgs = _preview(client, c, "1", name="Ana")
+        msgs = _preview(client, c, "4", name="Ana")
         text = _texts(msgs)
-        assert "Protección Total" in text or "Full PPF" in text
+        assert "Protección Completa" in text or "Full PPF" in text
         assert "asesor" in text.lower()
-        # No debe hablar de cita/agendar en Protección Total
+        # No debe hablar de cita/agendar en Full PPF
         assert "Agendamos" not in text and "agendar" not in text.lower()
 
-    def test_ppf_2_pintura(self, client):
+    def test_ppf_full_front(self, client):
         c = self._enter_ppf(client)
-        msgs = _preview(client, c, "2", name="Ana")
+        msgs = _preview(client, c, "3", name="Ana")
         text = _texts(msgs)
-        assert "Pintura Completa" in text
+        assert "Frontal" in text or "Full Front" in text
         assert "asesor" in text.lower()
         assert "Agendamos" not in text and "agendar" not in text.lower()
 
@@ -224,7 +224,7 @@ class TestOption2PPF:
     ])
     def test_ppf_piano_black_catalog(self, client, vehicle, expected_name, expected_price):
         c = self._enter_ppf(client, vehicle=vehicle)
-        msgs = _preview(client, c, "3", name="Ana")
+        msgs = _preview(client, c, "1", name="Ana")
         text = _texts(msgs)
         media = _all_media(msgs)
         assert expected_name in text
@@ -235,7 +235,7 @@ class TestOption2PPF:
 
     def test_ppf_piano_black_not_in_catalog(self, client):
         c = self._enter_ppf(client, vehicle="Renault Duster")
-        msgs = _preview(client, c, "3", name="Ana")
+        msgs = _preview(client, c, "1", name="Ana")
         text = _texts(msgs)
         assert "Renault Duster" in text
         # no imagen
@@ -243,9 +243,9 @@ class TestOption2PPF:
         # menciona algunos modelos disponibles
         assert "Mazda" in text or "Tesla" in text
 
-    def test_ppf_4_acrilicas(self, client):
+    def test_ppf_acrilicas(self, client):
         c = self._enter_ppf(client)
-        msgs = _preview(client, c, "4", name="Ana")
+        msgs = _preview(client, c, "2", name="Ana")
         text = _texts(msgs)
         assert "Acrílicas" in text or "acríl" in text.lower()
 

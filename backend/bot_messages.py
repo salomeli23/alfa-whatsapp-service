@@ -109,11 +109,22 @@ OPT1_PLAN_NAMES = {"1": "Plan Cerámico", "2": "Plan High Control", "3": "Plan I
 # ---- Opción 2: PPF ----
 PPF_PROTECT_MENU = (
     "Ahora indícame qué deseas proteger:\n"
-    "1️⃣ Protección Total\n"
-    "2️⃣ Pintura Completa\n"
-    "3️⃣ Piano Black\n"
-    "4️⃣ Partes Acrílicas\n"
+    "1️⃣ Piezas Piano Black\n"
+    "2️⃣ Piezas Acrílicas (espejos, farolas, stops)\n"
+    "3️⃣ Protección frontal o Full Front\n"
+    "4️⃣ Protección completa o Full PPF\n"
     "Responde con el número o el nombre del servicio."
+)
+
+PPF_FRONT_INFO = (
+    "🛡️ *PPF – Protección Frontal (Full Front)*\n"
+    "Protege las zonas de mayor impacto de tu vehículo:\n"
+    "🚗 Capó, bumper, guardafangos\n"
+    "🖤 Espejos y farolas\n\n"
+    "✅ Película PPF Premium\n"
+    "✅ Corte de precisión en plotter\n"
+    "✅ Garantía de 10 años\n"
+    "✅ Instalación profesional"
 )
 
 PPF_TOTAL_INFO = (
@@ -125,16 +136,6 @@ PPF_TOTAL_INFO = (
     "✅ Película PPF Premium\n"
     "✅ Corte de precisión en plotter\n"
     "✅ Garantía de 10 años\n"
-    "✅ Instalación profesional"
-)
-
-PPF_PINTURA_INFO = (
-    "✨ *PPF – Pintura Completa*\n"
-    "La máxima protección para toda la pintura de tu vehículo:\n\n"
-    "✅ Película transparente autorreparable ante rayones ligeros\n"
-    "✅ Protección contra piedras, insectos y químicos\n"
-    "✅ Conserva el brillo de fábrica y el valor de reventa\n"
-    "✅ Película PPF Premium con garantía de 10 años\n"
     "✅ Instalación profesional"
 )
 
@@ -576,7 +577,7 @@ def build_reply(incoming_text: str, session: dict):
             plan = "Plan IRR"
         if not plan:
             # Continuidad por palabras del menú dentro del paso de elección
-            if any(k in normalized for k in ["total", "pintura", "piano", "acril", "acríl"]):
+            if any(k in normalized for k in ["total", "pintura", "piano", "acril", "acríl", "frontal", "front", "completa", "full"]):
                 session["step"] = "ppf_protect"
                 return build_reply(text, session)
             if "ppf" in normalized:
@@ -592,30 +593,30 @@ def build_reply(incoming_text: str, session: dict):
         return [_msg(f"¡Excelente elección! 🙌 El *{plan}* es ideal para tu vehículo." + AGENDAR + BACK_HINT)]
 
     if step == "ppf_protect":
-        if normalized in ("1",) or "total" in normalized:
-            session["step"] = None
-            session["request_human"] = True
-            return [
-                _msg("¡Excelente elección! 🙌 Elegiste *Protección Total* (Full PPF)."),
-                _msg(PPF_TOTAL_INFO),
-                _msg(PPF_TO_ADVISOR),
-            ]
-        if normalized in ("2",) or "pintura" in normalized:
-            session["step"] = None
-            session["request_human"] = True
-            return [
-                _msg("¡Perfecto! 🙌 Elegiste *Pintura Completa*."),
-                _msg(PPF_PINTURA_INFO),
-                _msg(PPF_TO_ADVISOR),
-            ]
-        if normalized in ("3",) or "piano" in normalized:
+        if normalized in ("1",) or "piano" in normalized:
             session["step"] = "handoff_agendar"
             msgs = _piano_black(session)
             msgs[-1]["text"] += BACK_HINT
             return msgs
-        if normalized in ("4",) or "acril" in normalized or "acríl" in normalized:
+        if normalized in ("2",) or "acril" in normalized or "acríl" in normalized:
             session["step"] = "handoff_agendar"
             return [_msg(PPF_ACRILICAS + AGENDAR + BACK_HINT)]
+        if normalized in ("3",) or "frontal" in normalized or "front" in normalized:
+            session["step"] = None
+            session["request_human"] = True
+            return [
+                _msg("¡Excelente elección! 🙌 Elegiste *Protección Frontal* (Full Front)."),
+                _msg(PPF_FRONT_INFO),
+                _msg(PPF_TO_ADVISOR),
+            ]
+        if normalized in ("4",) or "total" in normalized or "completa" in normalized or "full" in normalized or "pintura" in normalized:
+            session["step"] = None
+            session["request_human"] = True
+            return [
+                _msg("¡Perfecto! 🙌 Elegiste *Protección Completa* (Full PPF)."),
+                _msg(PPF_TOTAL_INFO),
+                _msg(PPF_TO_ADVISOR),
+            ]
         # Continuidad por palabras del menú (ej. "mejor polarizado", "antiatraco")
         sid2 = _guess_service(normalized)
         if sid2 and sid2 != "2":

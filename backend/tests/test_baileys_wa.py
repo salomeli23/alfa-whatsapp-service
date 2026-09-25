@@ -146,9 +146,10 @@ class TestBotIncomingFlows:
         self._send(client, c, "2", name="Luis")
         data = self._send(client, c, "Mazda CX-5", name="Luis")
         text = "\n".join(m["text"] for m in data["messages"])
-        assert "Protección Total" in text
-        assert "Pintura Completa" in text
-        assert "Piano Black" in text
+        assert "Piezas Piano Black" in text
+        assert "Piezas Acrílicas" in text
+        assert "Full Front" in text
+        assert "Full PPF" in text
 
 
 # ---------- Persistencia ----------
@@ -312,18 +313,18 @@ class TestScheduleHandoff:
         r2 = client.post(f"{API}/bot/incoming",
                          json={"contact": c, "name": "Luis", "text": "CX-5"}, timeout=15)
         text2 = "\n".join(m["text"] for m in r2.json()["messages"])
-        assert "Protección Total" in text2 and "Piano Black" in text2
+        assert "Piano Black" in text2 and "Full PPF" in text2
 
     def test_ppf_total_goes_to_advisor_no_cita(self, client, auth_headers):
         c = _unique_contact()
-        for txt in ["hola", "2", "Mazda CX-5", "1"]:
+        for txt in ["hola", "2", "Mazda CX-5", "4"]:
             client.post(f"{API}/bot/incoming",
                         json={"contact": c, "name": "Luis", "text": txt}, timeout=15)
-        # tras elegir Protección Total: respuesta + info + asesor, sin cita, y bot pausado
+        # tras elegir Protección Completa (Full PPF): respuesta + info + asesor, sin cita, y bot pausado
         r = client.get(f"{API}/admin/messages", headers=auth_headers,
                        params={"contact": c}, timeout=15)
         bodies = "\n".join(m["body"] for m in r.json())
-        assert "Protección Total" in bodies and "asesor" in bodies.lower()
+        assert "Full PPF" in bodies and "asesor" in bodies.lower()
         assert "Agendamos" not in bodies
         rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
         conv = next((x for x in rc.json() if x["contact"] == c), None)
@@ -373,7 +374,7 @@ class TestComboAndKeywords:
         r = client.post(f"{API}/bot/incoming",
                         json={"contact": c, "name": "Ana", "text": "me interesa el ppf"}, timeout=15)
         text = "\n".join(m["text"] for m in r.json()["messages"])
-        assert "Protección Total" in text and "Piano Black" in text
+        assert "Piezas Piano Black" in text and "Full PPF" in text
 
     def test_keyword_pelicula_y_pernos(self, client):
         for msg, esperado in [("quiero la pelicula", "marca y modelo"),
