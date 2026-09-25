@@ -159,7 +159,13 @@ PPF_ACRILICAS = (
 
 
 # ---- Opción 3: Película Antiatraco ----
-ANTIATRACO_IMG = "https://res.cloudinary.com/dewemwkqf/image/upload/v1785534807/planes_bjx5xb.jpg"
+ANTIATRACO_IMGS = [
+    "https://res.cloudinary.com/dewemwkqf/image/upload/v1790119626/ChatGPT_Image_22_sept_2026_18_18_12_n4uidp.png",
+    "https://res.cloudinary.com/dewemwkqf/image/upload/v1790119627/ChatGPT_Image_22_sept_2026_18_24_43_okkpka.png",
+    "https://res.cloudinary.com/dewemwkqf/image/upload/v1790119627/ChatGPT_Image_22_sept_2026_18_23_21_tlpyvd.png",
+    "https://res.cloudinary.com/dewemwkqf/image/upload/v1790119627/ChatGPT_Image_22_sept_2026_18_21_44_fi0mrg.png",
+    "https://res.cloudinary.com/dewemwkqf/image/upload/v1790119626/ChatGPT_Image_22_sept_2026_18_20_18_rylctb.png",
+]
 ANTIATRACO_VIDEO = "https://res.cloudinary.com/dewemwkqf/video/upload/v1785534808/pruebaseguridad_qgxt4u.mp4"
 # La pregunta se envía después de que el video se cargue/vea
 ANTIATRACO_QUESTION_DELAY = 10
@@ -534,7 +540,7 @@ def build_reply(incoming_text: str, session: dict):
                 _msg(
                     saludo + "\n\nEstos son nuestros *planes de Película Antiatraco* 🚨👇\n\n"
                     "😍 ¿Cuál opción te gusta más? Indícame el plan que prefieres." + BACK_HINT,
-                    media=[ANTIATRACO_IMG],
+                    media=ANTIATRACO_IMGS,
                 ),
             ]
         if sid == "5":
