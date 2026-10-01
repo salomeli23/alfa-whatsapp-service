@@ -391,6 +391,17 @@ class TestComplexQueryHandoff:
         text = "\n".join(m["text"] for m in r.json()["messages"])
         assert "marca y modelo" in text.lower()
 
+    def test_menu_to_everyone_even_long_first_message(self, client):
+        # Primer mensaje largo/complejo -> igual recibe el MENÚ, no redirección
+        c = _unique_contact()
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Rosa",
+                              "text": "Hola buenas, me pueden indicar en qué consiste cada servicio porque no tengo idea de nada?"},
+                        timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "Soy Andrea" in text  # menú de bienvenida
+        assert r.json()["paused"] is False
+
     def test_arch_long_measures_not_handoff(self, client):
         # Medidas largas en flujo arquitectónico NO deben ir a asesora prematuramente
         c = _unique_contact()

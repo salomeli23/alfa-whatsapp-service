@@ -43,7 +43,7 @@ def _wa_headers():
     return {"x-wa-token": WA_TOKEN} if WA_TOKEN else {}
 
 # Reenganche si el cliente no responde en más de 3 horas
-REENGAGE_AFTER_SECONDS = 3 * 60 * 60
+REENGAGE_AFTER_SECONDS = 4 * 60 * 60
 REENGAGE_CHECK_INTERVAL = 10 * 60
 
 twilio_client = None
