@@ -416,6 +416,55 @@ class TestComplexQueryHandoff:
         assert "Medidas" in text  # registró las medidas (resumen), no el mensaje de pregunta
 
 
+# ---------- Anti-repetición + escalación + "cobertura total" ----------
+class TestNoRepeat:
+    def test_same_message_twice_gives_friendly_note(self, client):
+        c = _unique_contact()
+        self._hola(client, c)
+        r1 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Ana", "text": "donde quedan?"}, timeout=15)
+        assert "Cra. 49" in r1.json()["messages"][0]["text"]
+        # mismo input -> no repetir la ubicación, nota amable
+        r2 = client.post(f"{API}/bot/incoming",
+                         json={"contact": c, "name": "Ana", "text": "donde quedan?"}, timeout=15)
+        t2 = r2.json()["messages"][0]["text"]
+        assert "Cra. 49" not in t2
+        assert "Ya te compartí" in t2
+
+    def test_many_repeats_handoff_and_pause(self, client, auth_headers):
+        c = _unique_contact()
+        self._hola(client, c)
+        for _ in range(3):
+            r = client.post(f"{API}/bot/incoming",
+                            json={"contact": c, "name": "Ana", "text": "donde quedan?"}, timeout=15)
+        text = r.json()["messages"][0]["text"]
+        assert "asesora" in text.lower()
+        rc = client.get(f"{API}/admin/conversations", headers=auth_headers, timeout=15)
+        conv = next((x for x in rc.json() if x["contact"] == c), None)
+        assert conv is not None and conv.get("bot_paused") is True
+
+    def test_menu_repeat_allowed(self, client):
+        # El menú sí se puede repetir (el cliente lo pide con volver/menu)
+        c = _unique_contact()
+        self._hola(client, c)
+        for _ in range(2):
+            r = client.post(f"{API}/bot/incoming",
+                            json={"contact": c, "name": "Ana", "text": "volver"}, timeout=15)
+            assert "Soy Andrea" in r.json()["messages"][0]["text"]
+
+    def test_cobertura_total_routes_to_ppf(self, client):
+        c = _unique_contact()
+        self._hola(client, c)
+        r = client.post(f"{API}/bot/incoming",
+                        json={"contact": c, "name": "Ana", "text": "cobertura total"}, timeout=15)
+        text = "\n".join(m["text"] for m in r.json()["messages"])
+        assert "PPF" in text and "marca y modelo" in text.lower()
+
+    def _hola(self, client, c):
+        client.post(f"{API}/bot/incoming",
+                    json={"contact": c, "name": "Ana", "text": "hola"}, timeout=15)
+
+
 # ---------- Combo "1 y 2" + palabras clave en pasos de elección ----------
 class TestComboAndKeywords:
     def test_combo_1_y_2(self, client):

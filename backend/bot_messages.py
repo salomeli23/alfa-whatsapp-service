@@ -484,7 +484,7 @@ def _is_complex_query(normalized: str) -> bool:
 def _guess_service(normalized: str):
     if any(k in normalized for k in ["casa", "apartamento", "oficina", "edificio", "local", "ventana", "fachada"]):
         return "4"
-    if any(k in normalized for k in ["ppf", "piano black", "proteccion de pintura", "protección de pintura", "acrilic", "acrílic"]):
+    if any(k in normalized for k in ["ppf", "piano black", "proteccion de pintura", "protección de pintura", "acrilic", "acrílic", "cobertura"]):
         return "2"
     if any(k in normalized for k in ["antiatraco", "atraco", "robo", "robar", "seguridad vehicular", "pelicula", "película"]):
         return "3"
@@ -495,7 +495,38 @@ def _guess_service(normalized: str):
     return None
 
 
+REPEAT_NOTE = (
+    "Ya te compartí esa información 😊 ¿Te ayudo con algo más? Cuéntame qué te interesa: "
+    "*Polarizado* (1), *PPF* (2), *Película Antiatraco* (3) o escribe *volver* para ver el menú."
+)
+
+REPEAT_HANDOFF = (
+    "Para ayudarte mejor, una de nuestras asesoras 🙋‍♀️ continuará tu atención de forma "
+    "personalizada en este momento. 😊"
+)
+
+
 def build_reply(incoming_text: str, session: dict):
+    """Wrapper: evita repetir la misma respuesta (excepto el menú, que el cliente pide a propósito);
+    si se repite mucho, pasa a asesora."""
+    msgs = _build_reply_core(incoming_text, session)
+    sig = "||".join((m.get("text") or "")[:80] for m in msgs)
+    if sig == WELCOME_MESSAGE[:80]:
+        return msgs  # el menú siempre se permite (el cliente lo solicita)
+    if sig and sig == session.get("last_reply_sig"):
+        session["repeat_count"] = session.get("repeat_count", 0) + 1
+        if session["repeat_count"] >= 2:
+            session["step"] = None
+            session["repeat_count"] = 0
+            session["request_human"] = True
+            return [_msg(REPEAT_HANDOFF)]
+        return [_msg(REPEAT_NOTE)]
+    session["last_reply_sig"] = sig
+    session["repeat_count"] = 0
+    return msgs
+
+
+def _build_reply_core(incoming_text: str, session: dict):
     """Devuelve una lista de mensajes [{text, media[]}] y actualiza el estado de la sesión."""
     text = (incoming_text or "").strip()
     normalized = text.lower()
