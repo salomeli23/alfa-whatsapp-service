@@ -107,7 +107,7 @@ async function startSock() {
         }
 
         const m = msg.message;
-        const text =
+        let text =
           m.conversation ||
           (m.extendedTextMessage && m.extendedTextMessage.text) ||
           (m.imageMessage && m.imageMessage.caption) ||
@@ -115,6 +115,13 @@ async function startSock() {
           (m.buttonsResponseMessage && m.buttonsResponseMessage.selectedDisplayText) ||
           (m.listResponseMessage && m.listResponseMessage.title) ||
           "";
+        // Listas/botones nativos (single_select): llega el id elegido ("1".."5")
+        if (m.interactiveResponseMessage && m.interactiveResponseMessage.nativeFlowResponseMessage) {
+          try {
+            const p = JSON.parse(m.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson || "{}");
+            if (p.id) text = String(p.id);
+          } catch (e) {}
+        }
         const isAudio = !!(m.audioMessage || m.pttMessage);
         const pushName = msg.pushName || "";
         const contact = jidToContact(jid);
@@ -132,7 +139,7 @@ async function startSock() {
         console.log(`[WA] Andrea generó ${replyMsgs.length} mensaje(s) de respuesta para ${contact}`);
         for (const mm of replyMsgs) {
           if (mm.delay) await new Promise((r) => setTimeout(r, mm.delay * 1000));
-          await sendToJid(jid, mm.text || "", mm.media || []);
+          await sendToJid(jid, mm.text || "", mm.media || [], mm.buttons || []);
           await new Promise((r) => setTimeout(r, 400)); // pequeño respiro entre mensajes
         }
       } catch (e) {
@@ -142,7 +149,32 @@ async function startSock() {
   });
 }
 
-async function sendToJid(jid, text, media) {
+async function sendToJid(jid, text, media, buttons) {
+  if (buttons && buttons.length) {
+    try {
+      await sock.sendMessage(jid, {
+        interactiveMessage: {
+          body: text || "Elige una opción:",
+          footer: "Alfa Polarizados",
+          nativeFlowMessage: {
+            buttons: [{
+              name: "single_select",
+              buttonParamsJson: JSON.stringify({
+                title: "Ver opciones",
+                sections: [{
+                  title: "Servicios",
+                  rows: buttons.map((b) => ({ id: String(b.id), title: String(b.title).slice(0, 24) })),
+                }],
+              }),
+            }],
+          },
+        },
+      });
+      return;
+    } catch (e) {
+      console.error("Botones interactivos fallaron, envío texto plano:", e.message);
+    }
+  }
   if (media && media.length) {
     let caption = text || undefined;
     for (const url of media) {
@@ -173,11 +205,11 @@ app.get("/status", (req, res) => {
 });
 
 app.post("/send", async (req, res) => {
-  const { to, text, media } = req.body || {};
+  const { to, text, media, buttons } = req.body || {};
   if (!to) return res.status(400).json({ ok: false, error: "falta destino" });
   const jid = to.includes("@") ? to : `${to}@s.whatsapp.net`;
   try {
-    await sendToJid(jid, text || "", media || []);
+    await sendToJid(jid, text || "", media || [], buttons || []);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });

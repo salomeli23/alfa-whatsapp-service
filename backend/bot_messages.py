@@ -395,8 +395,24 @@ SERVICES = {
 }
 
 
-def _msg(text: str, media=None, delay: int = 0):
-    return {"text": text, "media": media or [], "delay": delay}
+def _msg(text: str, media=None, delay: int = 0, buttons=None):
+    return {"text": text, "media": media or [], "delay": delay, "buttons": buttons or []}
+
+
+MENU_BUTTONS = [
+    {"id": "1", "title": "🚗 Polarizado vehicular"},
+    {"id": "2", "title": "🛡️ PPF"},
+    {"id": "3", "title": "🚨 Película Antiatraco"},
+    {"id": "4", "title": "🏢 Arquitectónico"},
+    {"id": "5", "title": "✨ Detailing"},
+]
+
+
+def _welcome_msgs():
+    return [
+        _msg(WELCOME_MESSAGE),
+        _msg("👇 O elige un servicio tocando el botón:", buttons=MENU_BUTTONS),
+    ]
 
 
 def _deliver_service(session: dict, sid: str):
@@ -511,7 +527,7 @@ def build_reply(incoming_text: str, session: dict):
     si se repite mucho, pasa a asesora."""
     msgs = _build_reply_core(incoming_text, session)
     sig = "||".join((m.get("text") or "")[:80] for m in msgs)
-    if sig == WELCOME_MESSAGE[:80]:
+    if msgs and (msgs[0].get("text") or "").startswith(WELCOME_MESSAGE[:60]):
         return msgs  # el menú siempre se permite (el cliente lo solicita)
     if sig and sig == session.get("last_reply_sig"):
         session["repeat_count"] = session.get("repeat_count", 0) + 1
@@ -535,14 +551,14 @@ def _build_reply_core(incoming_text: str, session: dict):
     if not session.get("greeted"):
         session["greeted"] = True
         session["step"] = None
-        return [_msg(WELCOME_MESSAGE)]
+        return _welcome_msgs()
 
     # Comando global: volver al menú
     if normalized in ("volver", "atras", "atrás", "menu", "menú", "regresar", "inicio") or any(
         k in normalized for k in ["opciones", "servicios"]
     ):
         session["step"] = None
-        return [_msg(WELCOME_MESSAGE)]
+        return _welcome_msgs()
 
     # Comando global: asesor humano
     if any(k in normalized for k in ["asesor", "humano", "agente", "persona"]):
@@ -744,7 +760,7 @@ def _build_reply_core(incoming_text: str, session: dict):
 
     # Saludo corto puro → menú. Saludo largo sin intención clara → guía corta (no reenviar menú)
     if len(normalized.split()) <= 3 and any(k in normalized for k in ["hola", "buenas", "buenos", "hi", "hello", "info", "informacion", "información"]):
-        return [_msg(WELCOME_MESSAGE)]
+        return _welcome_msgs()
 
     # Respuesta amable guiada (sin reenviar el menú completo)
     name = session.get("name", "")

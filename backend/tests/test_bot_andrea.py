@@ -112,8 +112,17 @@ class TestPreviewBasics:
     def test_preview_new_contact_returns_welcome(self, client):
         c = f"prev-{uuid.uuid4().hex}"
         msgs = _preview(client, c, "hi", reset=True, name="Camila")
-        assert len(msgs) == 1
+        assert len(msgs) == 2  # texto del menú + mensaje con botones
         assert "Soy Andrea" in msgs[0]["text"]
+
+    def test_welcome_has_interactive_buttons(self, client):
+        c = f"prev-{uuid.uuid4().hex}"
+        msgs = _preview(client, c, "hola", reset=True, name="Ana")
+        btns = [b for m in msgs for b in (m.get("buttons") or [])]
+        assert len(btns) == 5
+        assert [b["id"] for b in btns] == ["1", "2", "3", "4", "5"]
+        assert any("Polarizado" in b["title"] for b in btns)
+        assert any("PPF" in b["title"] for b in btns)
 
     def test_volver_command_returns_menu(self, client):
         c = f"prev-{uuid.uuid4().hex}"
